@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "UserWhatsAppLink" ADD COLUMN "dailySummary" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "monthlyReport" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "alerts" BOOLEAN NOT NULL DEFAULT true;

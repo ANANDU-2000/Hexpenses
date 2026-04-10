@@ -1,0 +1,600 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  owner
+  manager
+  family
+  viewer
+}
+
+/// Role within a shared workspace (team permissions).
+enum WorkspaceRole {
+  owner
+  manager
+  viewer
+}
+
+enum CategoryType {
+  expense
+  income
+}
+
+enum Frequency {
+  daily
+  weekly
+  monthly
+  quarterly
+  yearly
+}
+
+/// Tax regime for a taxable expense (manual entry).
+enum ExpenseTaxScheme {
+  gst_in
+  vat_ae
+}
+
+/// Manual portfolio line: stocks, mutual fund SIPs, crypto, etc.
+enum InvestmentKind {
+  stock
+  sip
+  crypto
+  other
+}
+
+enum RecurringStatus {
+  pending
+  paid
+  missed
+}
+
+enum RecurringMode {
+  auto_create
+  reminder_only
+}
+
+enum ExpenseSource {
+  manual
+  whatsapp
+  recurring_generated
+  import
+}
+
+enum NotificationChannel {
+  in_app
+  whatsapp
+  push
+}
+
+enum NotificationCategory {
+  recurring
+  insurance
+  emi
+  system
+  ai
+}
+
+enum AiInsightType {
+  spending_summary
+  anomaly
+  monthly_prediction
+  /// Budget or category overspend vs prior period
+  SPENDING_ALERT
+  /// Month-over-month or category mix shifts
+  TREND
+  /// Actionable savings / cash-flow tips
+  SUGGESTION
+}
+
+enum AiInsightStatus {
+  pending
+  ready
+  failed
+}
+
+enum WhatsAppMessageStatus {
+  received
+  parsed
+  applied
+  failed
+}
+
+enum WhatsAppProvider {
+  twilio
+  meta
+}
+
+enum AccountType {
+  bank
+  cash
+  credit
+}
+
+enum IncomeSource {
+  salary
+  business
+  other
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    AuditAction
+  /// Domain name, e.g. Expense, Account, Budget, AccountTransfer
+  entity    String
+  entityId  String
+  timestamp DateTime    @default(now())
+  metadata  Json?
+
+  @@index([userId, timestamp(sort: Desc)])
+  @@index([entity, entityId])
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  name                    String
+  phone                   String?                  @unique
+  email                   String?                  @unique
+  passwordHash            String?
+  currency                String                   @default("INR")
+  role                    UserRole                 @default(owner)
+  timeZone                String                   @default("UTC")
+  locale                  String                   @default("en")
+  deletedAt               DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  categories              Category[]
+  expenses                Expense[]
+  recurringExpenses       RecurringExpense[]
+  insurances              Insurance[]
+  vehicles                Vehicle[]
+  documents               Document[]
+  notifications           Notification[]
+  otpChallenges           OTPChallenge[]
+  refreshTokens           RefreshToken[]
+  aiInsights              AiInsight[]
+  whatsappInboundMessages WhatsAppInboundMessage[]
+  userWhatsAppLinks       UserWhatsAppLink[]
+  accounts                Account[]
+  accountTransfers        AccountTransfer[]
+  incomes                 Income[]
+  investments             Investment[]
+  liabilities             Liability[]
+  budgets                 Budget[]
+  pushDevices             PushDevice[]
+  workspacesOwned         Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships    WorkspaceMember[]
+  workspaceInvitesCreated WorkspaceInvite[] @relation("WorkspaceInviteCreator")
+  expensesEntered         Expense[]         @relation("ExpenseEnteredBy")
+  auditLogs               AuditLog[]
+}
+
+model RefreshToken {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId     String    @unique @default(uuid())
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  userAgent     String?
+  deviceLabel   String?
+  lastIpHash    String?
+  lastUsedAt    DateTime?
+  rotatedFromId String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model OTPChallenge {
+  id           String   @id @default(cuid())
+  mobileNumber String
+  code         String
+  isUsed       Boolean  @default(false)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String?
+
+  @@index([mobileNumber])
+}
+
+/// Top-level category (Option A: two levels — Category + SubCategory only; no nested Category tree).
+model Category {
+  id                String             @id @default(cuid())
+  name              String
+  type              CategoryType       @default(expense)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subCategoryRows   SubCategory[]
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+  budgets           Budget[]
+
+  @@unique([userId, name])
+  @@index([userId, type])
+}
+
+/// Monthly spending cap per expense category (yearMonth = YYYY * 100 + MM, e.g. 202604).
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String
+  categoryId  String
+  amountLimit Decimal  @db.Decimal(12, 2)
+  yearMonth   Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, categoryId, yearMonth])
+  @@index([userId, yearMonth])
+}
+
+model SubCategory {
+  id         String    @id @default(cuid())
+  name       String
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  expenses   Expense[]
+
+  @@unique([categoryId, name])
+}
+
+model Workspace {
+  id          String              @id @default(cuid())
+  name        String
+  ownerUserId String
+  owner       User                @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members     WorkspaceMember[]
+  invites     WorkspaceInvite[]
+  accounts    Account[]
+  expenses    Expense[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([ownerUserId])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(viewer)
+  joinedAt    DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole @default(viewer)
+  tokenHash   String        @unique
+  expiresAt   DateTime
+  createdById String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator     User          @relation("WorkspaceInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+
+  @@index([workspaceId])
+  @@index([email])
+}
+
+model Account {
+  id           String            @id @default(cuid())
+  name         String
+  type         AccountType
+  balance      Decimal           @default(0) @db.Decimal(12, 2)
+  userId       String
+  workspaceId  String?
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  expenses     Expense[]
+  recurring    RecurringExpense[]
+  transfersOut AccountTransfer[] @relation("TransferFrom")
+  transfersIn  AccountTransfer[] @relation("TransferTo")
+  incomes      Income[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+model Income {
+  id        String       @id @default(cuid())
+  amount    Decimal      @db.Decimal(12, 2)
+  source    IncomeSource
+  date      DateTime
+  note      String?
+  userId    String
+  accountId String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, accountId])
+  @@index([userId, source])
+}
+
+/// Manual investment / asset snapshot (e.g. brokerage, mutual funds) for net worth.
+model Investment {
+  id             String         @id @default(cuid())
+  userId         String
+  name           String
+  kind           InvestmentKind @default(other)
+  /// Total cost basis / contributions (manual).
+  investedAmount Decimal        @db.Decimal(12, 2)
+  /// Latest market value (manual).
+  currentValue   Decimal        @db.Decimal(12, 2)
+  note           String?
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([userId, kind])
+}
+
+/// Manual liability balance (e.g. loans) — excludes credit card balances tracked on Account type credit.
+model Liability {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  balance   Decimal  @db.Decimal(12, 2)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model AccountTransfer {
+  id            String   @id @default(cuid())
+  userId        String
+  fromAccountId String
+  toAccountId   String
+  amount        Decimal  @db.Decimal(12, 2)
+  note          String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount   Account  @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount     Account  @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model Expense {
+  id                 String                  @id @default(cuid())
+  amount             Decimal                 @db.Decimal(12, 2)
+  categoryId         String
+  subCategoryId      String?
+  accountId          String?
+  date               DateTime
+  note               String?
+  userId             String
+  workspaceId        String?
+  enteredByUserId    String?
+  currency           String                  @default("INR")
+  source             ExpenseSource           @default(manual)
+  metadata           Json?
+  vehicleId          String?
+  recurringExpenseId String?
+  whatsappMessageId  String?                 @unique
+  category           Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subCategory        SubCategory?            @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  account            Account?                @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace          Workspace?              @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  enteredBy          User?                   @relation("ExpenseEnteredBy", fields: [enteredByUserId], references: [id], onDelete: SetNull)
+  vehicle            Vehicle?                @relation("ExpenseVehicle", fields: [vehicleId], references: [id], onDelete: SetNull)
+  recurringExpense   RecurringExpense?       @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  whatsappMessage    WhatsAppInboundMessage? @relation(fields: [whatsappMessageId], references: [id], onDelete: SetNull)
+  taxable            Boolean                 @default(false)
+  taxScheme          ExpenseTaxScheme?
+  /// GST or VAT portion included in `amount` (same currency).
+  taxAmount          Decimal?                @db.Decimal(12, 2)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, categoryId, date])
+  @@index([userId, source])
+  @@index([userId, accountId])
+  @@index([categoryId, date])
+  @@index([workspaceId, date(sort: Desc)])
+  @@index([enteredByUserId])
+  @@index([userId, workspaceId, taxable, date(sort: Desc)])
+}
+
+model RecurringExpense {
+  id         String          @id @default(cuid())
+  amount     Decimal         @db.Decimal(12, 2)
+  frequency  Frequency
+  mode       RecurringMode   @default(auto_create)
+  status     RecurringStatus @default(pending)
+  nextDate   DateTime
+  categoryId String
+  accountId  String?
+  userId     String
+  title      String
+  note       String?
+  currency   String          @default("INR")
+  active     Boolean         @default(true)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  account    Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  expenses   Expense[]
+
+  @@index([userId, nextDate])
+  @@index([active, nextDate])
+}
+
+model Insurance {
+  id                 String    @id @default(cuid())
+  name               String
+  premium            Decimal   @db.Decimal(12, 2)
+  startDate          DateTime
+  expiryDate         DateTime
+  userId             String
+  type               String
+  provider           String?
+  policyNumber       String?
+  reminderDaysBefore Int       @default(7)
+  documentId         String?
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document           Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, expiryDate])
+}
+
+model Vehicle {
+  id             String           @id @default(cuid())
+  name           String
+  number         String
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses       VehicleExpense[]
+  ledgerExpenses Expense[]        @relation("ExpenseVehicle")
+
+  @@unique([userId, number])
+}
+
+model VehicleExpense {
+  id        String   @id @default(cuid())
+  vehicleId String
+  type      String
+  amount    Decimal  @db.Decimal(12, 2)
+  date      DateTime
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  /// Stored file name only (under ./uploads), e.g. "abc-uuid.pdf"
+  fileUrl      String
+  type         String
+  userId       String
+  originalName String?
+  mimeType     String?
+  tags         String[]    @default([])
+  /// Lowercase denormalized string for search (name, type, tags)
+  searchBlob   String      @default("")
+  uploadedAt   DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insurances   Insurance[]
+
+  @@index([userId, uploadedAt(sort: Desc)])
+}
+
+model Notification {
+  id          String               @id @default(cuid())
+  title       String
+  body        String?
+  channel     NotificationChannel  @default(in_app)
+  category    NotificationCategory @default(system)
+  date        DateTime
+  userId      String
+  readAt      DateTime?
+  dedupeKey   String?
+  relatedType String?
+  relatedId   String?
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([userId, date])
+}
+
+/// Registered device tokens for optional future push delivery (currently unused).
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model AiInsight {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             AiInsightType
+  status           AiInsightStatus @default(pending)
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  summary          String?         @db.Text
+  payload          Json?
+  openaiModel      String?
+  promptTokens     Int?
+  completionTokens Int?
+  errorMessage     String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([userId, type, createdAt(sort: Desc)])
+}
+
+/// Verified WhatsApp / E.164 identity linked to an app user.
+model UserWhatsAppLink {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneE164 String   @unique
+  verified  Boolean  @default(false)
+  /// Outbound digests and alert copies (user can disable per linked number).
+  dailySummary  Boolean @default(true)
+  monthlyReport Boolean @default(true)
+  alerts        Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model WhatsAppInboundMessage {
+  id                String                @id @default(cuid())
+  userId            String?
+  user              User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider          WhatsAppProvider
+  providerMessageId String
+  rawBody           String
+  parsedPayload     Json?
+  status            WhatsAppMessageStatus @default(received)
+  errorMessage      String?               @db.Text
+  expense           Expense?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@unique([provider, providerMessageId])
+  @@index([userId, createdAt(sort: Desc)])
+}

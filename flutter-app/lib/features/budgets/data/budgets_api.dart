@@ -1,0 +1,57 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api_envelope.dart';
+import '../../../core/providers.dart';
+
+class BudgetsApi {
+  BudgetsApi(this._dio);
+
+  final Dio _dio;
+
+  Future<Response<dynamic>> rawListResponse({String? month}) {
+    return _dio.get<dynamic>(
+      '/budgets',
+      queryParameters: {
+        if (month != null && month.isNotEmpty) 'month': month,
+      },
+    );
+  }
+
+  static String monthQueryParam([DateTime? d]) {
+    final n = d ?? DateTime.now();
+    return '${n.year}-${n.month}';
+  }
+
+  Future<List<Map<String, dynamic>>> list({String? month}) async {
+    final res = await rawListResponse(month: month);
+    final data = res.data;
+    if (data is List) return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    if (data is Map<String, dynamic> && data['success'] == true && data['data'] is List) {
+      return (data['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> create({
+    required String categoryId,
+    required double limit,
+    String? month,
+  }) async {
+    final res = await _dio.post<dynamic>(
+      '/budgets',
+      data: {
+        'categoryId': categoryId,
+        'limit': limit,
+        if (month != null && month.isNotEmpty) 'month': month,
+      },
+    );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
+  Future<void> delete(String id) async {
+    await _dio.delete('/budgets/$id');
+  }
+}
+
+final budgetsApiProvider = Provider<BudgetsApi>((ref) => BudgetsApi(ref.watch(dioProvider)));
