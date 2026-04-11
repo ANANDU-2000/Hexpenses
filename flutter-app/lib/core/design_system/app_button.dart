@@ -27,7 +27,8 @@ class AppButton extends StatefulWidget {
   State<AppButton> createState() => _AppButtonState();
 }
 
-class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMixin {
+class _AppButtonState extends State<AppButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _scale;
 
@@ -35,7 +36,10 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: MfMotion.fast);
-    _scale = Tween<double>(begin: 1, end: 0.97).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+    _scale = Tween<double>(
+      begin: 1,
+      end: 0.97,
+    ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
 
   @override
@@ -111,7 +115,10 @@ class _Primary extends StatelessWidget {
         ? SizedBox(
             height: 22,
             width: 22,
-            child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: cs.onPrimary,
+            ),
           )
         : Row(
             mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -135,9 +142,16 @@ class _Primary extends StatelessWidget {
     return FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        minimumSize: expand ? const Size(double.infinity, 52) : const Size(0, 52),
-        padding: const EdgeInsets.symmetric(horizontal: MfSpace.xl, vertical: MfSpace.md),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MfRadius.md)),
+        minimumSize: expand
+            ? const Size(double.infinity, 52)
+            : const Size(0, 52),
+        padding: const EdgeInsets.symmetric(
+          horizontal: MfSpace.xl,
+          vertical: MfSpace.md,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(MfRadius.md),
+        ),
         elevation: 0,
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
@@ -194,9 +208,16 @@ class _Secondary extends StatelessWidget {
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        minimumSize: expand ? const Size(double.infinity, 52) : const Size(0, 52),
-        padding: const EdgeInsets.symmetric(horizontal: MfSpace.xl, vertical: MfSpace.md),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MfRadius.md)),
+        minimumSize: expand
+            ? const Size(double.infinity, 52)
+            : const Size(0, 52),
+        padding: const EdgeInsets.symmetric(
+          horizontal: MfSpace.xl,
+          vertical: MfSpace.md,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(MfRadius.md),
+        ),
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         foregroundColor: cs.primary,
       ),
@@ -235,7 +256,11 @@ class _Ghost extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: cs.onSurface.withValues(alpha: 0.75)),
+                Icon(
+                  icon,
+                  size: 20,
+                  color: cs.onSurface.withValues(alpha: 0.75),
+                ),
                 const SizedBox(width: MfSpace.sm),
               ],
               Text(
@@ -252,8 +277,12 @@ class _Ghost extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        minimumSize: expand ? const Size(double.infinity, 48) : const Size(0, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MfRadius.sm)),
+        minimumSize: expand
+            ? const Size(double.infinity, 48)
+            : const Size(0, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(MfRadius.sm),
+        ),
       ),
       child: child,
     );

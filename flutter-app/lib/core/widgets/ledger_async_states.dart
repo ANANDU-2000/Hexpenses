@@ -46,11 +46,20 @@ class LedgerErrorState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: GoogleFonts.manrope(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: LedgerGap.sm),
           Text(
             message,
-            style: GoogleFonts.inter(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.65)),
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: cs.onSurface.withValues(alpha: 0.65),
+            ),
           ),
           if (onRetry != null) ...[
             const SizedBox(height: LedgerGap.md),
@@ -128,7 +137,10 @@ class LedgerEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: LedgerGap.xxl, horizontal: LedgerGap.lg),
+      padding: const EdgeInsets.symmetric(
+        vertical: LedgerGap.xxl,
+        horizontal: LedgerGap.lg,
+      ),
       child: Column(
         children: [
           Icon(icon, size: 48, color: cs.outline.withValues(alpha: 0.6)),
@@ -136,7 +148,10 @@ class LedgerEmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700),
+            style: GoogleFonts.manrope(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: LedgerGap.sm),
           Text(

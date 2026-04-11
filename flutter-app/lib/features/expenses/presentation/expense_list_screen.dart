@@ -123,13 +123,20 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(MfSpace.lg, 0, MfSpace.lg, MfSpace.sm),
+            padding: const EdgeInsets.fromLTRB(
+              MfSpace.lg,
+              0,
+              MfSpace.lg,
+              MfSpace.sm,
+            ),
             child: TextField(
               controller: _searchController,
               style: GoogleFonts.dmSans(color: cs.onSurface),
               decoration: InputDecoration(
                 hintText: 'Search expenses…',
-                hintStyle: GoogleFonts.dmSans(color: cs.onSurface.withValues(alpha: 0.35)),
+                hintStyle: GoogleFonts.dmSans(
+                  color: cs.onSurface.withValues(alpha: 0.35),
+                ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
                   size: 20,
@@ -151,19 +158,51 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
       body: async.when(
         data: (list) {
           if (list.isEmpty) {
-            return LedgerEmptyState(
-              title: 'No expenses yet',
-              subtitle:
-                  'Record spending to populate your ledger, budgets, and insights. Everything stays grouped by category.',
-              icon: Icons.receipt_long_outlined,
-              actionLabel: 'Add expense',
-              onAction: () {
-                Navigator.of(context).push(
-                  LedgerPageRoutes.fadeSlide<void>(
-                    AddExpenseScreen(initialAccountId: widget.accountId),
-                  ),
-                );
-              },
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 48,
+                      color: cs.onSurface.withValues(alpha: 0.25),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No expenses yet',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Record spending to populate your ledger, budgets, and insights. Everything stays grouped by category.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          LedgerPageRoutes.fadeSlide<void>(
+                            AddExpenseScreen(
+                              initialAccountId: widget.accountId,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Record your first expense'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(220, 52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
 

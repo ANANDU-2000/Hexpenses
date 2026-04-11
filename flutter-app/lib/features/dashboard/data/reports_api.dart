@@ -38,7 +38,11 @@ class ReportsApi {
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
 
-  Future<Map<String, dynamic>> taxSummary({int? year, int? month, bool details = false}) async {
+  Future<Map<String, dynamic>> taxSummary({
+    int? year,
+    int? month,
+    bool details = false,
+  }) async {
     final res = await _dio.get<dynamic>(
       '/reports/tax-summary',
       queryParameters: {
@@ -51,4 +55,6 @@ class ReportsApi {
   }
 }
 
-final reportsApiProvider = Provider<ReportsApi>((ref) => ReportsApi(ref.watch(dioProvider)));
+final reportsApiProvider = Provider<ReportsApi>(
+  (ref) => ReportsApi(ref.watch(dioProvider)),
+);

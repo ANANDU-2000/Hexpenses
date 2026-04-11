@@ -158,9 +158,7 @@ class LedgerGlassBar extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: cs.surface.withValues(alpha: 0.82),
-          ),
+          decoration: BoxDecoration(color: cs.surface.withValues(alpha: 0.82)),
           child: child,
         ),
       ),
@@ -170,7 +168,12 @@ class LedgerGlassBar extends StatelessWidget {
 
 /// FAB with ambient shadow recipe (DESIGN.md §4).
 class LedgerFab extends StatelessWidget {
-  const LedgerFab({super.key, required this.onPressed, required this.icon, this.tooltip});
+  const LedgerFab({
+    super.key,
+    required this.onPressed,
+    required this.icon,
+    this.tooltip,
+  });
 
   final VoidCallback onPressed;
   final IconData icon;

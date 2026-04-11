@@ -4,10 +4,7 @@ import '../data/notifications_api.dart';
 
 /// In-memory filters for the notifications list screen.
 class NotificationListFilters {
-  const NotificationListFilters({
-    this.category,
-    this.unreadOnly = false,
-  });
+  const NotificationListFilters({this.category, this.unreadOnly = false});
 
   final String? category;
   final bool unreadOnly;
@@ -43,15 +40,16 @@ class NotificationFiltersNotifier extends Notifier<NotificationListFilters> {
 
 final notificationFiltersProvider =
     NotifierProvider<NotificationFiltersNotifier, NotificationListFilters>(
-  NotificationFiltersNotifier.new,
-);
+      NotificationFiltersNotifier.new,
+    );
 
-final notificationsListProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final api = ref.watch(notificationsApiProvider);
-  final f = ref.watch(notificationFiltersProvider);
-  return api.list(
-    category: f.category,
-    unreadOnly: f.unreadOnly ? true : null,
-    limit: 100,
-  );
-});
+final notificationsListProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      final api = ref.watch(notificationsApiProvider);
+      final f = ref.watch(notificationFiltersProvider);
+      return api.list(
+        category: f.category,
+        unreadOnly: f.unreadOnly ? true : null,
+        limit: 100,
+      );
+    });

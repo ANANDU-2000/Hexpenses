@@ -13,7 +13,10 @@ import '../data/insights_api.dart';
 enum InsightsEntryTab { insights, chat }
 
 class InsightsScreen extends ConsumerStatefulWidget {
-  const InsightsScreen({super.key, this.initialTab = InsightsEntryTab.insights});
+  const InsightsScreen({
+    super.key,
+    this.initialTab = InsightsEntryTab.insights,
+  });
 
   final InsightsEntryTab initialTab;
 
@@ -27,7 +30,8 @@ class _ChatTurn {
   final String text;
 }
 
-class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTickerProviderStateMixin {
+class _InsightsScreenState extends ConsumerState<InsightsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _messageCtrl = TextEditingController();
   final _scrollInsights = ScrollController();
@@ -67,7 +71,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
 
     try {
       final api = ref.read(insightsApiProvider);
-      final result = await api.chat(trimmed, history: _apiHistory.isEmpty ? null : List.from(_apiHistory));
+      final result = await api.chat(
+        trimmed,
+        history: _apiHistory.isEmpty ? null : List.from(_apiHistory),
+      );
       _apiHistory.add({'role': 'user', 'content': trimmed});
       _apiHistory.add({'role': 'assistant', 'content': result.reply});
       if (_apiHistory.length > 24) {
@@ -75,7 +82,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
       }
       if (mounted) {
         setState(() {
-          _chatBubbles.add(_ChatTurn(fromUser: false, text: result.reply.isEmpty ? '(No reply)' : result.reply));
+          _chatBubbles.add(
+            _ChatTurn(
+              fromUser: false,
+              text: result.reply.isEmpty ? '(No reply)' : result.reply,
+            ),
+          );
         });
       }
     } on DioException catch (e) {
@@ -84,7 +96,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
           _chatBubbles.add(
             _ChatTurn(
               fromUser: false,
-              text: e.response?.data?.toString() ?? e.message ?? 'Request failed',
+              text:
+                  e.response?.data?.toString() ?? e.message ?? 'Request failed',
             ),
           );
         });
@@ -116,12 +129,21 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
       appBar: AppBar(
         title: Text(
           'AI & insights',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 20),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
         ),
         bottom: TabBar(
           controller: _tabController,
-          labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
-          unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
+          labelStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
           tabs: const [
             Tab(text: 'Insights'),
             Tab(text: 'Chat'),
@@ -177,7 +199,12 @@ class _InsightsTab extends StatelessWidget {
         data: (data) {
           return ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(MfSpace.xxl, MfSpace.md, MfSpace.xxl, MfSpace.xxl),
+            padding: const EdgeInsets.fromLTRB(
+              MfSpace.xxl,
+              MfSpace.md,
+              MfSpace.xxl,
+              MfSpace.xxl,
+            ),
             children: [
               AppCard(
                 glass: true,
@@ -193,7 +220,10 @@ class _InsightsTab extends StatelessWidget {
                         children: [
                           Text(
                             'Ask the assistant',
-                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
                           const SizedBox(height: MfSpace.xs),
                           Text(
@@ -206,48 +236,75 @@ class _InsightsTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.35)),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurface.withValues(alpha: 0.35),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: MfSpace.xl),
-              Text(
-                'Source: ${data.source ?? 'n/a'}',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.55),
-                    ),
-              ),
+              if (data.source == 'heuristic' || data.source == 'rule')
+                const SizedBox.shrink()
+              else if (data.source == 'ai')
+                Chip(
+                  label: const Text('AI'),
+                  avatar: const Icon(Icons.auto_awesome, size: 12),
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                Text(
+                  'Source: ${data.source ?? 'n/a'}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
               const SizedBox(height: MfSpace.lg),
               _sectionTitle(context, 'Monthly summary'),
               const SizedBox(height: MfSpace.sm),
               _insightCard(
                 context,
-                data.monthlyFinancialSummary.isEmpty ? 'No summary yet.' : data.monthlyFinancialSummary,
+                data.monthlyFinancialSummary.isEmpty
+                    ? 'No summary yet.'
+                    : data.monthlyFinancialSummary,
               ),
               const SizedBox(height: MfSpace.xl),
               _sectionTitle(context, 'Spending warnings'),
               const SizedBox(height: MfSpace.sm),
               if (data.spendingWarnings.isEmpty)
-                _insightCard(context, 'No category spikes detected vs last month.')
+                _insightCard(
+                  context,
+                  'No category spikes detected vs last month.',
+                )
               else
-                ...data.spendingWarnings.map((line) => Padding(
-                      padding: const EdgeInsets.only(bottom: MfSpace.sm),
-                      child: _insightCard(context, line, accent: cs.error.withValues(alpha: 0.85)),
-                    )),
+                ...data.spendingWarnings.map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                    child: _insightCard(
+                      context,
+                      line,
+                      accent: cs.error.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
               const SizedBox(height: MfSpace.md),
               _sectionTitle(context, 'Saving suggestions'),
               const SizedBox(height: MfSpace.sm),
-              ...data.savingSuggestions.map((line) => Padding(
-                    padding: const EdgeInsets.only(bottom: MfSpace.sm),
-                    child: _insightCard(context, line, accent: cs.tertiary),
-                  )),
+              ...data.savingSuggestions.map(
+                (line) => Padding(
+                  padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                  child: _insightCard(context, line, accent: cs.tertiary),
+                ),
+              ),
               const SizedBox(height: MfSpace.md),
               _sectionTitle(context, 'Budget recommendations'),
               const SizedBox(height: MfSpace.sm),
-              ...data.budgetRecommendations.map((line) => Padding(
-                    padding: const EdgeInsets.only(bottom: MfSpace.sm),
-                    child: _insightCard(context, line, accent: cs.primary),
-                  )),
+              ...data.budgetRecommendations.map(
+                (line) => Padding(
+                  padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                  child: _insightCard(context, line, accent: cs.primary),
+                ),
+              ),
               const SizedBox(height: MfSpace.xxl),
             ],
           );
@@ -284,9 +341,9 @@ class _InsightsTab extends StatelessWidget {
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: accent ?? cs.onSurface,
-              height: 1.45,
-            ),
+          color: accent ?? cs.onSurface,
+          height: 1.45,
+        ),
       ),
     );
   }
@@ -316,7 +373,12 @@ class _ChatTab extends StatelessWidget {
         Expanded(
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(MfSpace.xxl, MfSpace.md, MfSpace.xxl, MfSpace.md),
+            padding: const EdgeInsets.fromLTRB(
+              MfSpace.xxl,
+              MfSpace.md,
+              MfSpace.xxl,
+              MfSpace.md,
+            ),
             children: [
               Text(
                 'Ask about your spending, budgets, or savings. Replies use your latest snapshot when the API is available.',
@@ -368,7 +430,12 @@ class _ChatTab extends StatelessWidget {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(MfSpace.md, MfSpace.sm, MfSpace.md, MfSpace.md),
+              padding: const EdgeInsets.fromLTRB(
+                MfSpace.md,
+                MfSpace.sm,
+                MfSpace.md,
+                MfSpace.md,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -403,7 +470,12 @@ class _ChatTab extends StatelessWidget {
     );
   }
 
-  Widget _suggestionChip(BuildContext context, String label, VoidCallback onTap, bool disabled) {
+  Widget _suggestionChip(
+    BuildContext context,
+    String label,
+    VoidCallback onTap,
+    bool disabled,
+  ) {
     final cs = Theme.of(context).colorScheme;
     return ActionChip(
       label: Text(label, style: GoogleFonts.inter(fontSize: 13)),
@@ -422,8 +494,13 @@ class _ChatTab extends StatelessWidget {
       alignment: align,
       child: Container(
         margin: const EdgeInsets.only(bottom: MfSpace.sm + 2),
-        padding: const EdgeInsets.symmetric(horizontal: MfSpace.md + 2, vertical: MfSpace.sm + 2),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.88),
+        padding: const EdgeInsets.symmetric(
+          horizontal: MfSpace.md + 2,
+          vertical: MfSpace.sm + 2,
+        ),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.88,
+        ),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.only(

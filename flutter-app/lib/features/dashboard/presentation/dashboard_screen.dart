@@ -903,10 +903,7 @@ class _DashboardHeroStatChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
-              color: MfPalette.textMuted,
-            ),
+            style: GoogleFonts.dmSans(fontSize: 11, color: MfPalette.textMuted),
           ),
           const SizedBox(height: MfSpace.xs - 1),
           Row(
@@ -925,7 +922,10 @@ class _DashboardHeroStatChip extends StatelessWidget {
               ),
               const SizedBox(width: MfSpace.sm - 2),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: MfSpace.sm - 2, vertical: MfSpace.xs - 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: MfSpace.sm - 2,
+                  vertical: MfSpace.xs - 2,
+                ),
                 decoration: BoxDecoration(
                   color: isUp
                       ? MfPalette.incomeGreen.withValues(alpha: 0.18)

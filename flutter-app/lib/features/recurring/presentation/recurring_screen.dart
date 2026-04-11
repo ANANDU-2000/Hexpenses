@@ -23,7 +23,12 @@ class RecurringScreen extends ConsumerWidget {
       body: list.when(
         data: (rows) {
           if (rows.isEmpty) {
-            return Center(child: Text('No recurring expenses', style: Theme.of(context).textTheme.titleMedium));
+            return Center(
+              child: Text(
+                'No recurring expenses',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            );
           }
           return RefreshIndicator(
             color: cs.primary,
@@ -47,11 +52,15 @@ class RecurringScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title, style: Theme.of(context).textTheme.titleSmall),
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '$freq · next $next',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: cs.onSurface.withValues(alpha: 0.55),
                                   ),
                             ),
@@ -60,7 +69,11 @@ class RecurringScreen extends ConsumerWidget {
                       ),
                       Text(
                         amt,
-                        style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 16, color: cs.onSurface),
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: cs.onSurface,
+                        ),
                       ),
                     ],
                   ),
@@ -106,18 +119,25 @@ class RecurringScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('New recurring', style: Theme.of(context).textTheme.titleLarge),
+                          Text(
+                            'New recurring',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                           const SizedBox(height: 16),
                           cats.when(
                             data: (list) => DropdownButtonFormField<String>(
                               key: ValueKey('rcat-$categoryId'),
-                              decoration: const InputDecoration(labelText: 'Category'),
+                              decoration: const InputDecoration(
+                                labelText: 'Category',
+                              ),
                               initialValue: categoryId,
                               items: list
-                                  .map((c) => DropdownMenuItem(
-                                        value: c['id']?.toString(),
-                                        child: Text(c['name']?.toString() ?? ''),
-                                      ))
+                                  .map(
+                                    (c) => DropdownMenuItem(
+                                      value: c['id']?.toString(),
+                                      child: Text(c['name']?.toString() ?? ''),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: (v) => setSt(() => categoryId = v),
                             ),
@@ -125,38 +145,66 @@ class RecurringScreen extends ConsumerWidget {
                             error: (e, _) => Text('$e'),
                           ),
                           const SizedBox(height: 12),
-                          TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
+                          TextField(
+                            controller: title,
+                            decoration: const InputDecoration(
+                              labelText: 'Title',
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           TextField(
                             controller: amount,
-                            decoration: const InputDecoration(labelText: 'Amount'),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Amount',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
                             key: ValueKey(freq),
-                            decoration: const InputDecoration(labelText: 'Frequency'),
+                            decoration: const InputDecoration(
+                              labelText: 'Frequency',
+                            ),
                             initialValue: freq,
-                            items: _freqs.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
-                            onChanged: (v) => setSt(() => freq = v ?? 'monthly'),
+                            items: _freqs
+                                .map(
+                                  (f) => DropdownMenuItem(
+                                    value: f,
+                                    child: Text(f),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) =>
+                                setSt(() => freq = v ?? 'monthly'),
                           ),
                           const SizedBox(height: 8),
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: Text('Next: ${next.toLocal().toString().split(' ').first}'),
+                            title: Text(
+                              'Next: ${next.toLocal().toString().split(' ').first}',
+                            ),
                             trailing: const Icon(Icons.calendar_today_outlined),
                             onTap: () async {
                               final d = await showDatePicker(
                                 context: context,
                                 initialDate: next,
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365 * 3),
+                                ),
                               );
                               if (d != null) setSt(() => next = d);
                             },
                           ),
                           const SizedBox(height: 8),
-                          TextField(controller: note, decoration: const InputDecoration(labelText: 'Note')),
+                          TextField(
+                            controller: note,
+                            decoration: const InputDecoration(
+                              labelText: 'Note',
+                            ),
+                          ),
                           const SizedBox(height: 20),
                           LedgerPrimaryGradientButton(
                             onPressed: () async {
@@ -164,19 +212,29 @@ class RecurringScreen extends ConsumerWidget {
                               final a = double.tryParse(amount.text.trim());
                               if (a == null || a <= 0) return;
                               try {
-                                await ref.read(recurringApiProvider).create(
+                                await ref
+                                    .read(recurringApiProvider)
+                                    .create(
                                       amount: a,
                                       frequency: freq,
-                                      nextDateIso: next.toUtc().toIso8601String(),
+                                      nextDateIso: next
+                                          .toUtc()
+                                          .toIso8601String(),
                                       categoryId: categoryId!,
-                                      title: title.text.trim().isEmpty ? 'Recurring' : title.text.trim(),
-                                      note: note.text.trim().isEmpty ? null : note.text.trim(),
+                                      title: title.text.trim().isEmpty
+                                          ? 'Recurring'
+                                          : title.text.trim(),
+                                      note: note.text.trim().isEmpty
+                                          ? null
+                                          : note.text.trim(),
                                     );
                                 ref.invalidate(recurringListProvider);
                                 if (context.mounted) Navigator.pop(context);
                               } on DioException catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(SnackBar(content: Text('$e')));
                                 }
                               }
                             },

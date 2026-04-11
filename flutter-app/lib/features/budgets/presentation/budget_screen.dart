@@ -31,7 +31,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   void _shiftMonth(int delta) {
     final parts = _monthKey.split('-');
     var y = int.tryParse(parts[0]) ?? DateTime.now().year;
-    var m = int.tryParse(parts.length > 1 ? parts[1] : '${DateTime.now().month}') ?? DateTime.now().month;
+    var m =
+        int.tryParse(parts.length > 1 ? parts[1] : '${DateTime.now().month}') ??
+        DateTime.now().month;
     m += delta;
     while (m < 1) {
       m += 12;
@@ -51,11 +53,15 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final cats = ref.read(categoriesProvider);
     await cats.when(
       data: (list) async {
-        final expenseCats = list.where((c) => c['type']?.toString() == 'expense').toList();
+        final expenseCats = list
+            .where((c) => c['type']?.toString() == 'expense')
+            .toList();
         if (expenseCats.isEmpty) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Create an expense category first.')),
+              const SnackBar(
+                content: Text('Create an expense category first.'),
+              ),
             );
           }
           return;
@@ -67,7 +73,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
           isScrollControlled: true,
           builder: (ctx) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+              ),
               child: StatefulBuilder(
                 builder: (context, setSt) {
                   return Padding(
@@ -76,11 +84,16 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('New budget', style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          'New budget',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           key: ValueKey(catId),
-                          decoration: const InputDecoration(labelText: 'Category'),
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                          ),
                           initialValue: catId,
                           items: expenseCats
                               .map(
@@ -95,8 +108,12 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: limitCtrl,
-                          decoration: const InputDecoration(labelText: 'Monthly limit'),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Monthly limit',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -120,16 +137,20 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
         final lim = double.tryParse(limitCtrl.text.trim());
         if (lim == null || lim <= 0) return;
         try {
-          await ref.read(budgetsApiProvider).create(
-            categoryId: catId!,
-            limit: lim,
-            month: _monthKey,
-          );
-          await ref.read(ledgerSyncServiceProvider).pullBudgetsForMonth(_monthKey);
+          await ref
+              .read(budgetsApiProvider)
+              .create(categoryId: catId!, limit: lim, month: _monthKey);
+          await ref
+              .read(ledgerSyncServiceProvider)
+              .pullBudgetsForMonth(_monthKey);
         } on DioException catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.response?.data?.toString() ?? e.message ?? 'Failed')),
+              SnackBar(
+                content: Text(
+                  e.response?.data?.toString() ?? e.message ?? 'Failed',
+                ),
+              ),
             );
           }
         }
@@ -156,7 +177,10 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
           Center(
             child: Text(
               _monthKey,
-              style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 15),
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
             ),
           ),
           IconButton(
@@ -168,7 +192,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
       body: RefreshIndicator(
         color: cs.primary,
         onRefresh: () async {
-          await ref.read(ledgerSyncServiceProvider).pullBudgetsForMonth(_monthKey);
+          await ref
+              .read(ledgerSyncServiceProvider)
+              .pullBudgetsForMonth(_monthKey);
         },
         child: async.when(
           data: (rows) {
@@ -191,11 +217,16 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               itemBuilder: (_, i) {
                 final r = rows[i];
                 final name = r['categoryName']?.toString() ?? '';
-                final limit = double.tryParse(r['limit']?.toString() ?? '0') ?? 0;
-                final spent = double.tryParse(r['spent']?.toString() ?? '0') ?? 0;
+                final limit =
+                    double.tryParse(r['limit']?.toString() ?? '0') ?? 0;
+                final spent =
+                    double.tryParse(r['spent']?.toString() ?? '0') ?? 0;
                 final exceeded = r['exceeded'] == true;
-                final pctUsed = double.tryParse(r['percentUsed']?.toString() ?? '0') ?? 0;
-                final progress = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
+                final pctUsed =
+                    double.tryParse(r['percentUsed']?.toString() ?? '0') ?? 0;
+                final progress = limit > 0
+                    ? (spent / limit).clamp(0.0, 1.0)
+                    : 0.0;
                 final barColor = exceeded ? cs.error : cs.primary;
                 final id = r['id']?.toString() ?? '';
 
@@ -216,7 +247,10 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                             ),
                             if (exceeded)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: cs.error.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
@@ -231,17 +265,28 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                                 ),
                               ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline, color: cs.onSurface.withValues(alpha: 0.45)),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: cs.onSurface.withValues(alpha: 0.45),
+                              ),
                               onPressed: id.isEmpty
                                   ? null
                                   : () async {
                                       try {
-                                        await ref.read(budgetsApiProvider).delete(id);
-                                        await ref.read(ledgerSyncServiceProvider).pullBudgetsForMonth(_monthKey);
+                                        await ref
+                                            .read(budgetsApiProvider)
+                                            .delete(id);
+                                        await ref
+                                            .read(ledgerSyncServiceProvider)
+                                            .pullBudgetsForMonth(_monthKey);
                                       } on DioException catch (e) {
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('${e.message}')),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('${e.message}'),
+                                            ),
                                           );
                                         }
                                       }
@@ -265,7 +310,8 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                           children: [
                             Text(
                               'Spent ${spent.toStringAsFixed(2)} / ${limit.toStringAsFixed(2)}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: cs.onSurface.withValues(alpha: 0.75),
                                   ),
                             ),
@@ -287,7 +333,12 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(16), child: Text('$e'))),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('$e'),
+            ),
+          ),
         ),
       ),
       floatingActionButton: LedgerFab(

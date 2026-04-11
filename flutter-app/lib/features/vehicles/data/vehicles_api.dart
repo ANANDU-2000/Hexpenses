@@ -14,7 +14,10 @@ class VehiclesApi {
     return (res.data ?? []).cast<Map<String, dynamic>>();
   }
 
-  Future<Map<String, dynamic>> create({required String name, required String number}) async {
+  Future<Map<String, dynamic>> create({
+    required String name,
+    required String number,
+  }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/vehicles',
       data: {'name': name, 'number': number},
@@ -42,4 +45,6 @@ class VehiclesApi {
   }
 }
 
-final vehiclesApiProvider = Provider<VehiclesApi>((ref) => VehiclesApi(ref.watch(dioProvider)));
+final vehiclesApiProvider = Provider<VehiclesApi>(
+  (ref) => VehiclesApi(ref.watch(dioProvider)),
+);

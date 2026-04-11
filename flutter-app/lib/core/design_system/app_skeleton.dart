@@ -4,11 +4,7 @@ import '../theme/money_flow_tokens.dart';
 
 /// Shimmer-style loading placeholder.
 class AppSkeleton extends StatefulWidget {
-  const AppSkeleton({
-    super.key,
-    required this.child,
-    this.borderRadius,
-  });
+  const AppSkeleton({super.key, required this.child, this.borderRadius});
 
   final Widget child;
   final BorderRadius? borderRadius;
@@ -17,13 +13,17 @@ class AppSkeleton extends StatefulWidget {
   State<AppSkeleton> createState() => _AppSkeletonState();
 }
 
-class _AppSkeletonState extends State<AppSkeleton> with SingleTickerProviderStateMixin {
+class _AppSkeletonState extends State<AppSkeleton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
   }
 
   @override
@@ -67,13 +67,13 @@ class DashboardHeaderSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     Widget bar(double h, {double w = double.infinity}) => Container(
-          width: w,
-          height: h,
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(MfRadius.sm),
-          ),
-        );
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(MfRadius.sm),
+      ),
+    );
 
     return AppSkeleton(
       child: Column(

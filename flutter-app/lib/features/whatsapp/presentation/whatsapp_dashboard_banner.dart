@@ -9,7 +9,8 @@ import 'whatsapp_connect_screen.dart';
 class WhatsappDashboardBanner extends ConsumerWidget {
   const WhatsappDashboardBanner({super.key});
 
-  bool _connected(Map<String, dynamic> s) => s['verified'] == true || s['connected'] == true;
+  bool _connected(Map<String, dynamic> s) =>
+      s['verified'] == true || s['connected'] == true;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,15 +28,23 @@ class WhatsappDashboardBanner extends ConsumerWidget {
             child: InkWell(
               onTap: () {
                 Navigator.of(context).push<void>(
-                  MaterialPageRoute<void>(builder: (_) => const WhatsappConnectScreen()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WhatsappConnectScreen(),
+                  ),
                 );
               },
               borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.chat_rounded, color: cs.primary.withValues(alpha: 0.85)),
+                    Icon(
+                      Icons.chat_rounded,
+                      color: cs.primary.withValues(alpha: 0.85),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -43,7 +52,10 @@ class WhatsappDashboardBanner extends ConsumerWidget {
                         children: [
                           Text(
                             'Connect WhatsApp',
-                            style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700),
+                            style: GoogleFonts.manrope(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -56,7 +68,10 @@ class WhatsappDashboardBanner extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.35)),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurface.withValues(alpha: 0.35),
+                    ),
                   ],
                 ),
               ),

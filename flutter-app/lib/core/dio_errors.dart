@@ -23,7 +23,8 @@ String dioErrorMessage(DioException e) {
         final m = data['message'];
         return m is List ? m.join(', ') : m.toString();
       }
-      return e.response?.statusMessage ?? 'Server error (${e.response?.statusCode})';
+      return e.response?.statusMessage ??
+          'Server error (${e.response?.statusCode})';
     default:
       break;
   }

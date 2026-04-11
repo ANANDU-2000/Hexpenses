@@ -39,7 +39,8 @@ class ExpensesApi {
       data: {
         'amount': amount,
         'categoryId': categoryId,
-        if (subCategoryId != null && subCategoryId.isNotEmpty) 'subCategoryId': subCategoryId,
+        if (subCategoryId != null && subCategoryId.isNotEmpty)
+          'subCategoryId': subCategoryId,
         'date': dateIso,
         if (note != null && note.isNotEmpty) 'note': note,
         if (accountId != null && accountId.isNotEmpty) 'accountId': accountId,
@@ -64,4 +65,6 @@ class ExpensesApi {
   }
 }
 
-final expensesApiProvider = Provider<ExpensesApi>((ref) => ExpensesApi(ref.watch(dioProvider)));
+final expensesApiProvider = Provider<ExpensesApi>(
+  (ref) => ExpensesApi(ref.watch(dioProvider)),
+);

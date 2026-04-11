@@ -37,4 +37,6 @@ class RecurringApi {
   }
 }
 
-final recurringApiProvider = Provider<RecurringApi>((ref) => RecurringApi(ref.watch(dioProvider)));
+final recurringApiProvider = Provider<RecurringApi>(
+  (ref) => RecurringApi(ref.watch(dioProvider)),
+);

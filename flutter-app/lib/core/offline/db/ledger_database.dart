@@ -88,41 +88,54 @@ QueryExecutor _defaultLedgerExecutor() {
   return driftDatabase(name: 'ledger_offline');
 }
 
-@DriftDatabase(tables: [CachedExpenses, CachedAccounts, CachedBudgets, SyncOutbox, LedgerKv])
+@DriftDatabase(
+  tables: [CachedExpenses, CachedAccounts, CachedBudgets, SyncOutbox, LedgerKv],
+)
 class LedgerDatabase extends _$LedgerDatabase {
-  LedgerDatabase([QueryExecutor? executor]) : super(executor ?? _defaultLedgerExecutor());
+  LedgerDatabase([QueryExecutor? executor])
+    : super(executor ?? _defaultLedgerExecutor());
 
   @override
   int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(ledgerKv);
-          }
-        },
-      );
+    onCreate: (m) async => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(ledgerKv);
+      }
+    },
+  );
 
   Stream<List<Map<String, dynamic>>> watchExpensesForList() {
     return (select(cachedExpenses)
-          ..where((t) => t.syncStatus.isNotValue(LedgerSyncStatus.pendingDelete.index))
+          ..where(
+            (t) =>
+                t.syncStatus.isNotValue(LedgerSyncStatus.pendingDelete.index),
+          )
           ..orderBy([(t) => OrderingTerm.desc(t.expenseSortDate)]))
         .watch()
         .map(
           (rows) => rows
-              .map((r) => Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map))
+              .map(
+                (r) =>
+                    Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map),
+              )
               .toList(),
         );
   }
 
   Stream<List<Map<String, dynamic>>> watchAccountsPayloads() {
-    return (select(cachedAccounts)..orderBy([(t) => OrderingTerm.asc(t.id)])).watch().map(
-          (rows) => rows
-              .map((r) => Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map))
-              .toList(),
-        );
+    return (select(
+      cachedAccounts,
+    )..orderBy([(t) => OrderingTerm.asc(t.id)])).watch().map(
+      (rows) => rows
+          .map(
+            (r) => Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map),
+          )
+          .toList(),
+    );
   }
 
   Stream<List<Map<String, dynamic>>> watchBudgetsForMonth(String monthKey) {
@@ -132,7 +145,10 @@ class LedgerDatabase extends _$LedgerDatabase {
         .watch()
         .map(
           (rows) => rows
-              .map((r) => Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map))
+              .map(
+                (r) =>
+                    Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map),
+              )
               .toList(),
         );
   }
@@ -167,7 +183,10 @@ class LedgerDatabase extends _$LedgerDatabase {
         s == LedgerSyncStatus.conflict;
   }
 
-  Future<void> replaceExpenseId(String oldId, Map<String, dynamic> serverRow) async {
+  Future<void> replaceExpenseId(
+    String oldId,
+    Map<String, dynamic> serverRow,
+  ) async {
     final newId = serverRow['id']?.toString() ?? '';
     if (newId.isEmpty) return;
     await transaction(() async {
@@ -176,10 +195,17 @@ class LedgerDatabase extends _$LedgerDatabase {
     });
   }
 
-  Future<void> markExpenseConflict(String id, Map<String, dynamic> serverRow) async {
-    final existing = await (select(cachedExpenses)..where((t) => t.id.equals(id))).getSingleOrNull();
+  Future<void> markExpenseConflict(
+    String id,
+    Map<String, dynamic> serverRow,
+  ) async {
+    final existing = await (select(
+      cachedExpenses,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) return;
-    final local = Map<String, dynamic>.from(jsonDecode(existing.payloadJson) as Map);
+    final local = Map<String, dynamic>.from(
+      jsonDecode(existing.payloadJson) as Map,
+    );
     local['_syncConflict'] = true;
     local['_serverSnapshot'] = serverRow;
     await (update(cachedExpenses)..where((t) => t.id.equals(id))).write(
@@ -209,7 +235,9 @@ class LedgerDatabase extends _$LedgerDatabase {
   }
 
   Future<List<SyncOutboxData>> pendingOutbox() {
-    return (select(syncOutbox)..orderBy([(t) => OrderingTerm.asc(t.localId)])).get();
+    return (select(
+      syncOutbox,
+    )..orderBy([(t) => OrderingTerm.asc(t.localId)])).get();
   }
 
   Future<void> removeOutbox(int localId) {
@@ -237,7 +265,10 @@ class LedgerDatabase extends _$LedgerDatabase {
     );
   }
 
-  Future<void> upsertBudgetFromServer(Map<String, dynamic> row, String monthKey) async {
+  Future<void> upsertBudgetFromServer(
+    Map<String, dynamic> row,
+    String monthKey,
+  ) async {
     final id = row['id']?.toString() ?? '';
     if (id.isEmpty) return;
     final serverAt = DateTime.now().toUtc();
@@ -254,7 +285,9 @@ class LedgerDatabase extends _$LedgerDatabase {
   }
 
   Future<bool> shouldSkipAccountPull(String id) async {
-    final row = await (select(cachedAccounts)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (select(
+      cachedAccounts,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return false;
     final s = LedgerSyncStatus.values[row.syncStatus];
     return s == LedgerSyncStatus.pendingPush ||
@@ -263,7 +296,9 @@ class LedgerDatabase extends _$LedgerDatabase {
   }
 
   Future<bool> shouldSkipBudgetPull(String id) async {
-    final row = await (select(cachedBudgets)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (select(
+      cachedBudgets,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return false;
     final s = LedgerSyncStatus.values[row.syncStatus];
     return s == LedgerSyncStatus.pendingPush ||
@@ -272,13 +307,15 @@ class LedgerDatabase extends _$LedgerDatabase {
   }
 
   Future<void> upsertKv(String key, String value) async {
-    await into(ledgerKv).insertOnConflictUpdate(
-      LedgerKvCompanion.insert(k: key, v: value),
-    );
+    await into(
+      ledgerKv,
+    ).insertOnConflictUpdate(LedgerKvCompanion.insert(k: key, v: value));
   }
 
   Future<String?> readKv(String key) async {
-    final row = await (select(ledgerKv)..where((t) => t.k.equals(key))).getSingleOrNull();
+    final row = await (select(
+      ledgerKv,
+    )..where((t) => t.k.equals(key))).getSingleOrNull();
     return row?.v;
   }
 
@@ -309,7 +346,8 @@ class LedgerDatabase extends _$LedgerDatabase {
 
   static DateTime? parseServerIso(String? raw) => _parseIso(raw);
 
-  static DateTime expenseSortDateFromPayload(Map<String, dynamic> row) => _expenseSortDate(row);
+  static DateTime expenseSortDateFromPayload(Map<String, dynamic> row) =>
+      _expenseSortDate(row);
 
   static DateTime? _parseIso(String? raw) {
     if (raw == null || raw.isEmpty) return null;
@@ -319,7 +357,8 @@ class LedgerDatabase extends _$LedgerDatabase {
   static DateTime _expenseSortDate(Map<String, dynamic> row) {
     final d = row['date'];
     if (d is String) {
-      return DateTime.tryParse(d)?.toUtc() ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+      return DateTime.tryParse(d)?.toUtc() ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     }
     return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   }

@@ -52,4 +52,6 @@ class IncomesApi {
   }
 }
 
-final incomesApiProvider = Provider<IncomesApi>((ref) => IncomesApi(ref.watch(dioProvider)));
+final incomesApiProvider = Provider<IncomesApi>(
+  (ref) => IncomesApi(ref.watch(dioProvider)),
+);

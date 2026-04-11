@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// MoneyFlow AI — spacing, radii, motion (Stripe / Linear–inspired rhythm).
+/// MoneyFlow AI - spacing, radii, motion.
 abstract final class MfRadius {
   static const double sm = 12;
   static const double md = 16;
@@ -27,38 +27,39 @@ abstract final class MfMotion {
 /// Brand + semantic colors (use with [ColorScheme] in theme).
 abstract final class MfPalette {
   // Canvas
-  static const Color canvas = Color(0xFF0A0E1A);
-  static const Color phoneBg = Color(0xFF0D1120);
-  static const Color cardBg = Color(0x0AFFFFFF);
-  static const Color cardBorder = Color(0x0FFFFFFF);
+  static const Color canvas = Color(0xFF0A0F0D);
+  static const Color phoneBg = Color(0xFF0A0F0D);
+  static const Color cardBg = Color(0xCC111A14);
+  static const Color cardBorder = Color(0x2634D399);
 
   // Brand
-  static const Color primary = Color(0xFF5B4CEC);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryGlow = Color(0xFFA259FF);
+  static const Color primary = Color(0xFF10B981);
+  static const Color primaryDark = Color(0xFF059669);
+  static const Color primaryLight = Color(0xFF34D399);
+  static const Color primaryGlow = Color(0xFF6EE7B7);
 
   // Semantic
-  static const Color incomeGreen = Color(0xFF4ADE80);
+  static const Color incomeGreen = Color(0xFF34D399);
   static const Color expenseRed = Color(0xFFF87171);
-  static const Color warningAmber = Color(0xFFFB923C);
+  static const Color warningAmber = Color(0xFFFBBF24);
 
   // Hero card gradient stops
-  static const Color heroStart = Color(0xFF1A2460);
-  static const Color heroMid = Color(0xFF0F1A50);
-  static const Color heroEnd = Color(0xFF121F6E);
+  static const Color heroStart = Color(0xFF10B981);
+  static const Color heroMid = Color(0xFF0B8A65);
+  static const Color heroEnd = Color(0xFF059669);
 
   // Text
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textMuted = Color(0x73FFFFFF);
-  static const Color textHint = Color(0x40FFFFFF);
+  static const Color textMuted = Color(0xB3E5F7EF);
+  static const Color textHint = Color(0x66D1FAE5);
 
   // Legacy aliases (keep for non-redesigned screens)
-  static const Color lightBg = Color(0xFFF8FAFC);
+  static const Color lightBg = Color(0xFFF0FDF4);
   static const Color lightBgElevated = Color(0xFFFFFFFF);
-  static const Color lightMuted = Color(0xFF64748B);
-  static const Color darkBg = Color(0xFF0F172A);
-  static const Color darkBgElevated = Color(0xFF1E293B);
-  static const Color darkMuted = Color(0xFF94A3B8);
+  static const Color lightMuted = Color(0xFF4B6355);
+  static const Color darkBg = Color(0xFF0A0F0D);
+  static const Color darkBgElevated = Color(0xFF111A14);
+  static const Color darkMuted = Color(0xFF8DA89A);
 
   /// Backwards-compatible names used by older widgets / light theme.
   static const Color success = incomeGreen;
@@ -66,69 +67,72 @@ abstract final class MfPalette {
   static const Color warning = warningAmber;
 }
 
-/// Indian Rupee symbol — use everywhere instead of hardcoded literals.
+/// Indian Rupee symbol - use everywhere instead of hardcoded literals.
 abstract final class MfCurrency {
-  static const String symbol = '₹';
+  static const String symbol = '\u20B9';
 
   static String format(num value) =>
       '$symbol${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 2)}';
 
   static String formatCompact(num value) {
-    if (value >= 100000) return '$symbol${(value / 100000).toStringAsFixed(1)}L';
-    if (value >= 1000) return '$symbol${(value / 1000).toStringAsFixed(1)}K';
+    final abs = value.abs();
+    final sign = value < 0 ? '-' : '';
+    if (abs >= 10000000) {
+      final crore = abs / 10000000;
+      final digits = crore == crore.truncateToDouble() ? 0 : 1;
+      return '$sign$symbol${crore.toStringAsFixed(digits)}Cr';
+    }
+    if (abs >= 100000) {
+      final lakh = abs / 100000;
+      final digits = lakh == lakh.truncateToDouble() ? 0 : 1;
+      return '$sign$symbol${lakh.toStringAsFixed(digits)}L';
+    }
     return format(value);
   }
 }
 
 const String kCurrencySymbol = MfCurrency.symbol;
 
-/// Glass card decoration — use for ALL card widgets.
+/// Glass card decoration - use for ALL card widgets.
 BoxDecoration glassCard({
   Color? color,
   double borderRadius = MfRadius.lg,
   Color? borderColor,
-}) =>
-    BoxDecoration(
-      color: color ?? MfPalette.cardBg,
-      borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(
-        color: borderColor ?? MfPalette.cardBorder,
-        width: 1,
-      ),
-    );
+}) => BoxDecoration(
+  color: color ?? MfPalette.cardBg,
+  borderRadius: BorderRadius.circular(borderRadius),
+  border: Border.all(color: borderColor ?? MfPalette.cardBorder, width: 1),
+);
 
-/// Hero gradient — for balance/summary cards.
+/// Hero gradient - for balance/summary cards.
 BoxDecoration heroCardDecoration() => BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [MfPalette.heroStart, MfPalette.heroMid, MfPalette.heroEnd],
-        stops: [0.0, 0.6, 1.0],
-      ),
-      borderRadius: BorderRadius.circular(MfRadius.xl),
-      border: Border.all(
-        color: const Color(0x2D6F82FF),
-        width: 1,
-      ),
-    );
+  gradient: const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [MfPalette.heroStart, MfPalette.heroMid, MfPalette.heroEnd],
+    stops: [0.0, 0.6, 1.0],
+  ),
+  borderRadius: BorderRadius.circular(MfRadius.xl),
+  border: Border.all(color: const Color(0x2634D399), width: 1),
+);
 
 LinearGradient incomeGradient() => LinearGradient(
-      colors: [
-        MfPalette.incomeGreen.withValues(alpha: 0.85),
-        MfPalette.incomeGreen.withValues(alpha: 0.50),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+  colors: [
+    MfPalette.incomeGreen.withValues(alpha: 0.85),
+    MfPalette.incomeGreen.withValues(alpha: 0.50),
+  ],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
 
 LinearGradient expenseGradient(Color categoryColor) => LinearGradient(
-      colors: [
-        categoryColor.withValues(alpha: 0.85),
-        categoryColor.withValues(alpha: 0.50),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+  colors: [
+    categoryColor.withValues(alpha: 0.85),
+    categoryColor.withValues(alpha: 0.50),
+  ],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
 
 /// Optional theme extension for widgets that need explicit semantic colors.
 @immutable
@@ -154,7 +158,7 @@ class MoneyFlowThemeExtension extends ThemeExtension<MoneyFlowThemeExtension> {
 
   static const dark = MoneyFlowThemeExtension(
     success: MfPalette.incomeGreen,
-    onSuccess: Color(0xFF064E3B),
+    onSuccess: Color(0xFF022C1A),
     warning: MfPalette.warningAmber,
     glassOpacity: 0.55,
   );

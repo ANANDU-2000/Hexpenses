@@ -39,11 +39,15 @@ class VehiclesScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name, style: Theme.of(context).textTheme.titleSmall),
+                          Text(
+                            name,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             number,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
                                   color: cs.onSurface.withValues(alpha: 0.55),
                                 ),
                           ),
@@ -51,7 +55,10 @@ class VehiclesScreen extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.add_circle_outline, color: cs.primary.withValues(alpha: 0.85)),
+                      icon: Icon(
+                        Icons.add_circle_outline,
+                        color: cs.primary.withValues(alpha: 0.85),
+                      ),
                       onPressed: () => _addCost(context, ref, id),
                     ),
                   ],
@@ -88,20 +95,34 @@ class VehiclesScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: number, decoration: const InputDecoration(labelText: 'Plate / number')),
+            TextField(
+              controller: number,
+              decoration: const InputDecoration(labelText: 'Plate / number'),
+            ),
             const SizedBox(height: 20),
             LedgerPrimaryGradientButton(
               onPressed: () async {
-                if (name.text.trim().isEmpty || number.text.trim().isEmpty) return;
+                if (name.text.trim().isEmpty || number.text.trim().isEmpty)
+                  return;
                 try {
-                  await ref.read(vehiclesApiProvider).create(name: name.text.trim(), number: number.text.trim());
+                  await ref
+                      .read(vehiclesApiProvider)
+                      .create(
+                        name: name.text.trim(),
+                        number: number.text.trim(),
+                      );
                   ref.invalidate(vehiclesListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } on DioException catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('$e')));
                   }
                 }
               },
@@ -132,12 +153,19 @@ class VehiclesScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(controller: type, decoration: const InputDecoration(labelText: 'Type (fuel, service…)')),
+              TextField(
+                controller: type,
+                decoration: const InputDecoration(
+                  labelText: 'Type (fuel, service…)',
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: amount,
                 decoration: const InputDecoration(labelText: 'Amount'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -159,7 +187,9 @@ class VehiclesScreen extends ConsumerWidget {
                   final a = double.tryParse(amount.text.trim());
                   if (a == null) return;
                   try {
-                    await ref.read(vehiclesApiProvider).addCost(
+                    await ref
+                        .read(vehiclesApiProvider)
+                        .addCost(
                           vehicleId: vehicleId,
                           type: type.text.trim(),
                           amount: a,
@@ -169,7 +199,9 @@ class VehiclesScreen extends ConsumerWidget {
                     if (context.mounted) Navigator.pop(context);
                   } on DioException catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('$e')));
                     }
                   }
                 },

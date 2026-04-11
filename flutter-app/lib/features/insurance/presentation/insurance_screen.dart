@@ -37,11 +37,15 @@ class InsuranceScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(p['name']?.toString() ?? '', style: Theme.of(context).textTheme.titleSmall),
+                          Text(
+                            p['name']?.toString() ?? '',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             'Expires ${p['expiryDate']?.toString().split('T').first ?? ''}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
                                   color: cs.onSurface.withValues(alpha: 0.55),
                                 ),
                           ),
@@ -50,7 +54,11 @@ class InsuranceScreen extends ConsumerWidget {
                     ),
                     Text(
                       p['premium']?.toString() ?? '',
-                      style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 15, color: cs.onSurface),
+                      style: GoogleFonts.manrope(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: cs.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -91,18 +99,28 @@ class InsuranceScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Policy name')),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Policy name'),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: type, decoration: const InputDecoration(labelText: 'Type')),
+              TextField(
+                controller: type,
+                decoration: const InputDecoration(labelText: 'Type'),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: premium,
                 decoration: const InputDecoration(labelText: 'Premium'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Start ${start.toLocal().toString().split(' ').first}'),
+                title: Text(
+                  'Start ${start.toLocal().toString().split(' ').first}',
+                ),
                 trailing: const Icon(Icons.calendar_today_outlined),
                 onTap: () async {
                   final d = await showDatePicker(
@@ -116,7 +134,9 @@ class InsuranceScreen extends ConsumerWidget {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Expiry ${end.toLocal().toString().split(' ').first}'),
+                title: Text(
+                  'Expiry ${end.toLocal().toString().split(' ').first}',
+                ),
                 trailing: const Icon(Icons.calendar_today_outlined),
                 onTap: () async {
                   final d = await showDatePicker(
@@ -134,7 +154,9 @@ class InsuranceScreen extends ConsumerWidget {
                   final pr = double.tryParse(premium.text.trim());
                   if (pr == null || name.text.trim().isEmpty) return;
                   try {
-                    await ref.read(insuranceApiProvider).create(
+                    await ref
+                        .read(insuranceApiProvider)
+                        .create(
                           name: name.text.trim(),
                           type: type.text.trim(),
                           premium: pr,
@@ -145,7 +167,9 @@ class InsuranceScreen extends ConsumerWidget {
                     if (context.mounted) Navigator.pop(context);
                   } on DioException catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('$e')));
                     }
                   }
                 },

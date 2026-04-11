@@ -23,7 +23,9 @@ class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   static void _push(BuildContext context, Widget page) {
-    Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => page));
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute<void>(builder: (_) => page));
   }
 
   @override
@@ -33,11 +35,14 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: AppBar(
-        title: const Text('Profile'),
-      ),
+      appBar: AppBar(title: const Text('Profile')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(MfSpace.xxl, MfSpace.md, MfSpace.xxl, 100),
+        padding: const EdgeInsets.fromLTRB(
+          MfSpace.xxl,
+          MfSpace.md,
+          MfSpace.xxl,
+          100,
+        ),
         children: [
           AppCard(
             padding: const EdgeInsets.all(MfSpace.xl),
@@ -46,19 +51,37 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 Text(
                   'Appearance',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: MfSpace.md),
-                SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto, size: 18)),
-                    ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_outlined, size: 18)),
-                    ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined, size: 18)),
-                  ],
-                  selected: {mode},
-                  onSelectionChanged: (s) {
-                    ref.read(themeModeProvider.notifier).setMode(s.first);
-                  },
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('System'),
+                        icon: Icon(Icons.brightness_auto, size: 18),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Light'),
+                        icon: Icon(Icons.light_mode_outlined, size: 18),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Dark'),
+                        icon: Icon(Icons.dark_mode_outlined, size: 18),
+                      ),
+                    ],
+                    selected: {mode},
+                    onSelectionChanged: (s) {
+                      ref.read(themeModeProvider.notifier).setMode(s.first);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -71,58 +94,140 @@ class ProfileScreen extends ConsumerWidget {
               'Ask AI',
               null,
               cs.primary,
-              () => _push(context, const InsightsScreen(initialTab: InsightsEntryTab.chat)),
+              () => _push(
+                context,
+                const InsightsScreen(initialTab: InsightsEntryTab.chat),
+              ),
             ),
           ]),
           _section(context, 'Messaging', [
-            _tile(context, Icons.chat_rounded, 'WhatsApp', 'Optional alerts & digests', const Color(0xFF128C7E), () {
-              _push(context, const WhatsappConnectScreen());
-            }),
+            _tile(
+              context,
+              Icons.chat_rounded,
+              'WhatsApp',
+              'Optional alerts & digests',
+              const Color(0xFF128C7E),
+              () {
+                _push(context, const WhatsappConnectScreen());
+              },
+            ),
           ]),
           _section(context, 'Money', [
-            _tile(context, Icons.account_balance_wallet_outlined, 'Accounts', null, cs.primary, () {
-              _push(context, const AccountsScreen());
-            }),
-            _tile(context, Icons.repeat_rounded, 'Recurring', null, cs.secondary, () {
-              _push(context, const RecurringScreen());
-            }),
-            _tile(context, Icons.pie_chart_outline_rounded, 'Budgets', null, const Color(0xFF6D28D9), () {
-              _push(context, const BudgetScreen());
-            }),
-            _tile(context, Icons.bar_chart_rounded, 'Full reports', null, cs.primary, () {
-              _push(context, const ReportsScreen());
-            }),
+            _tile(
+              context,
+              Icons.account_balance_wallet_outlined,
+              'Accounts',
+              null,
+              cs.primary,
+              () {
+                _push(context, const AccountsScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.repeat_rounded,
+              'Recurring',
+              null,
+              cs.secondary,
+              () {
+                _push(context, const RecurringScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.pie_chart_outline_rounded,
+              'Budgets',
+              null,
+              const Color(0xFF6D28D9),
+              () {
+                _push(context, const BudgetScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.bar_chart_rounded,
+              'Full reports',
+              null,
+              cs.primary,
+              () {
+                _push(context, const ReportsScreen());
+              },
+            ),
           ]),
           _section(context, 'Library', [
-            _tile(context, Icons.folder_outlined, 'Documents', null, cs.onSurface, () {
-              _push(context, const DocumentsScreen());
-            }),
-            _tile(context, Icons.notifications_outlined, 'Notifications', null, cs.onSurface, () {
-              _push(context, const NotificationsScreen());
-            }),
+            _tile(
+              context,
+              Icons.folder_outlined,
+              'Documents',
+              null,
+              cs.onSurface,
+              () {
+                _push(context, const DocumentsScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.notifications_outlined,
+              'Notifications',
+              null,
+              cs.onSurface,
+              () {
+                _push(context, const NotificationsScreen());
+              },
+            ),
           ]),
           _section(context, 'Wealth', [
-            _tile(context, Icons.trending_up_outlined, 'Investments', null, cs.onSurface, () {
-              _push(context, const InvestmentsScreen());
-            }),
-            _tile(context, Icons.health_and_safety_outlined, 'Insurance', null, const Color(0xFF0369A1), () {
-              _push(context, const InsuranceScreen());
-            }),
-            _tile(context, Icons.directions_car_outlined, 'Vehicles', null, cs.onSurface, () {
-              _push(context, const VehiclesScreen());
-            }),
+            _tile(
+              context,
+              Icons.trending_up_outlined,
+              'Investments',
+              null,
+              cs.onSurface,
+              () {
+                _push(context, const InvestmentsScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.health_and_safety_outlined,
+              'Insurance',
+              null,
+              const Color(0xFF0369A1),
+              () {
+                _push(context, const InsuranceScreen());
+              },
+            ),
+            _tile(
+              context,
+              Icons.directions_car_outlined,
+              'Vehicles',
+              null,
+              cs.onSurface,
+              () {
+                _push(context, const VehiclesScreen());
+              },
+            ),
           ]),
           const SizedBox(height: MfSpace.lg),
           ListTile(
-            leading: Icon(Icons.info_outline_rounded, color: cs.onSurface.withValues(alpha: 0.5)),
-            title: Text('About MoneyFlow AI', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-            trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.35)),
+            leading: Icon(
+              Icons.info_outline_rounded,
+              color: cs.onSurface.withValues(alpha: 0.5),
+            ),
+            title: Text(
+              'About MoneyFlow AI',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+            ),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              color: cs.onSurface.withValues(alpha: 0.35),
+            ),
             onTap: () => showAboutDialog(
-                  context: context,
-                  applicationName: 'MoneyFlow AI',
-                  applicationVersion: '1.0.0',
-                  applicationLegalese: 'Premium personal finance',
-                ),
+              context: context,
+              applicationName: 'MoneyFlow AI',
+              applicationVersion: '1.0.0',
+              applicationLegalese: 'Premium personal finance',
+            ),
           ),
           const SizedBox(height: MfSpace.xl),
           FilledButton.icon(
@@ -134,7 +239,10 @@ class ProfileScreen extends ConsumerWidget {
               foregroundColor: cs.error,
             ),
             icon: Icon(Icons.logout_rounded, color: cs.error),
-            label: Text('Log out', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            label: Text(
+              'Log out',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -149,7 +257,10 @@ class ProfileScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: MfSpace.xs, bottom: MfSpace.sm),
+            padding: const EdgeInsets.only(
+              left: MfSpace.xs,
+              bottom: MfSpace.sm,
+            ),
             child: Text(
               title,
               style: GoogleFonts.inter(
@@ -183,7 +294,10 @@ class ProfileScreen extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: MfSpace.lg, vertical: MfSpace.md + 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: MfSpace.lg,
+            vertical: MfSpace.md + 2,
+          ),
           child: Row(
             children: [
               Container(
@@ -200,16 +314,28 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 15)),
+                    Text(
+                      title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
                     if (subtitle != null)
                       Text(
                         subtitle,
-                        style: GoogleFonts.inter(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5)),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
                       ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.35)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: cs.onSurface.withValues(alpha: 0.35),
+              ),
             ],
           ),
         ),

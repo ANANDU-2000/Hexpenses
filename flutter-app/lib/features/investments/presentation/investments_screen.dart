@@ -37,7 +37,11 @@ class InvestmentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 2);
+    final fmt = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '\u20B9',
+      decimalDigits: 2,
+    );
     final async = ref.watch(investmentPortfolioProvider);
 
     return Scaffold(
@@ -46,10 +50,14 @@ class InvestmentsScreen extends ConsumerWidget {
       body: async.when(
         data: (data) {
           final summaryRaw = data['summary'];
-          final summary = summaryRaw is Map ? Map<String, dynamic>.from(summaryRaw) : <String, dynamic>{};
+          final summary = summaryRaw is Map
+              ? Map<String, dynamic>.from(summaryRaw)
+              : <String, dynamic>{};
           final holdingsRaw = data['holdings'];
           final holdings = holdingsRaw is List
-              ? holdingsRaw.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+              ? holdingsRaw
+                    .map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList()
               : <Map<String, dynamic>>[];
 
           final totalInv = _toDouble(summary['totalInvested']);
@@ -73,8 +81,8 @@ class InvestmentsScreen extends ConsumerWidget {
                       Text(
                         'Portfolio',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.6),
-                            ),
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -98,9 +106,14 @@ class InvestmentsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                          color: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.45,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -111,8 +124,13 @@ class InvestmentsScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     'Profit / loss',
-                                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                          color: cs.onSurface.withValues(alpha: 0.55),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: cs.onSurface.withValues(
+                                            alpha: 0.55,
+                                          ),
                                         ),
                                   ),
                                   const SizedBox(height: 4),
@@ -121,7 +139,9 @@ class InvestmentsScreen extends ConsumerWidget {
                                     style: GoogleFonts.manrope(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 18,
-                                      color: pnl >= 0 ? _profitGreen : _lossRose,
+                                      color: pnl >= 0
+                                          ? _profitGreen
+                                          : _lossRose,
                                     ),
                                   ),
                                 ],
@@ -149,8 +169,8 @@ class InvestmentsScreen extends ConsumerWidget {
                       'No holdings yet. Add stocks, SIPs, or crypto manually.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.5),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
                     ),
                   )
                 else
@@ -171,9 +191,15 @@ class InvestmentsScreen extends ConsumerWidget {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(name, style: Theme.of(context).textTheme.titleSmall),
+                                      Text(
+                                        name,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleSmall,
+                                      ),
                                       const SizedBox(height: 6),
                                       Wrap(
                                         spacing: 8,
@@ -181,9 +207,12 @@ class InvestmentsScreen extends ConsumerWidget {
                                         children: [
                                           Chip(
                                             label: Text(_kindLabel(kind)),
-                                            visualDensity: VisualDensity.compact,
+                                            visualDensity:
+                                                VisualDensity.compact,
                                             padding: EdgeInsets.zero,
-                                            labelStyle: Theme.of(context).textTheme.labelSmall,
+                                            labelStyle: Theme.of(
+                                              context,
+                                            ).textTheme.labelSmall,
                                           ),
                                           Text(
                                             fmt.format(cur),
@@ -199,11 +228,15 @@ class InvestmentsScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  rowPnl >= 0 ? '+${fmt.format(rowPnl)}' : fmt.format(rowPnl),
+                                  rowPnl >= 0
+                                      ? '+${fmt.format(rowPnl)}'
+                                      : fmt.format(rowPnl),
                                   style: GoogleFonts.manrope(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
-                                    color: rowPnl >= 0 ? _profitGreen : _lossRose,
+                                    color: rowPnl >= 0
+                                        ? _profitGreen
+                                        : _lossRose,
                                   ),
                                 ),
                               ],
@@ -232,19 +265,35 @@ class InvestmentsScreen extends ConsumerWidget {
     _showHoldingSheet(context, ref, null);
   }
 
-  void _editHolding(BuildContext context, WidgetRef ref, Map<String, dynamic> h) {
+  void _editHolding(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> h,
+  ) {
     _showHoldingSheet(context, ref, h);
   }
 
-  void _showHoldingSheet(BuildContext context, WidgetRef ref, Map<String, dynamic>? existing) {
-    final name = TextEditingController(text: existing?['name']?.toString() ?? '');
+  void _showHoldingSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic>? existing,
+  ) {
+    final name = TextEditingController(
+      text: existing?['name']?.toString() ?? '',
+    );
     final invested = TextEditingController(
-      text: existing != null ? _toDouble(existing['investedAmount']).toString() : '',
+      text: existing != null
+          ? _toDouble(existing['investedAmount']).toString()
+          : '',
     );
     final current = TextEditingController(
-      text: existing != null ? _toDouble(existing['currentValue']).toString() : '',
+      text: existing != null
+          ? _toDouble(existing['currentValue']).toString()
+          : '',
     );
-    final note = TextEditingController(text: existing?['note']?.toString() ?? '');
+    final note = TextEditingController(
+      text: existing?['note']?.toString() ?? '',
+    );
     String kind = existing?['kind']?.toString() ?? 'stock';
 
     showModalBottomSheet<void>(
@@ -267,7 +316,10 @@ class InvestmentsScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 16),
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 key: ValueKey(kind),
@@ -275,7 +327,10 @@ class InvestmentsScreen extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
                   DropdownMenuItem(value: 'stock', child: Text('Stock')),
-                  DropdownMenuItem(value: 'sip', child: Text('SIP / mutual fund')),
+                  DropdownMenuItem(
+                    value: 'sip',
+                    child: Text('SIP / mutual fund'),
+                  ),
                   DropdownMenuItem(value: 'crypto', child: Text('Crypto')),
                   DropdownMenuItem(value: 'other', child: Text('Other')),
                 ],
@@ -284,7 +339,9 @@ class InvestmentsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: invested,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Amount invested (cost basis)',
                   helperText: 'Total you put in',
@@ -293,7 +350,9 @@ class InvestmentsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: current,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Current value',
                   helperText: 'Latest portfolio / market value',
@@ -310,7 +369,9 @@ class InvestmentsScreen extends ConsumerWidget {
                 onPressed: () async {
                   final n = name.text.trim();
                   if (n.isEmpty) return;
-                  final inv = double.tryParse(invested.text.replaceAll(',', ''));
+                  final inv = double.tryParse(
+                    invested.text.replaceAll(',', ''),
+                  );
                   final cur = double.tryParse(current.text.replaceAll(',', ''));
                   if (inv == null || cur == null) return;
                   Navigator.pop(ctx);
@@ -322,7 +383,9 @@ class InvestmentsScreen extends ConsumerWidget {
                         kind: kind,
                         investedAmount: inv,
                         currentValue: cur,
-                        note: note.text.trim().isEmpty ? null : note.text.trim(),
+                        note: note.text.trim().isEmpty
+                            ? null
+                            : note.text.trim(),
                       );
                     } else {
                       await api.update(
@@ -337,7 +400,9 @@ class InvestmentsScreen extends ConsumerWidget {
                     ref.invalidate(investmentPortfolioProvider);
                   } on DioException catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(dioErrorMessage(e))),
+                      );
                     }
                   }
                 },
@@ -349,15 +414,24 @@ class InvestmentsScreen extends ConsumerWidget {
                   onPressed: () async {
                     Navigator.pop(ctx);
                     try {
-                      await ref.read(investmentsApiProvider).delete(existing['id']!.toString());
+                      await ref
+                          .read(investmentsApiProvider)
+                          .delete(existing['id']!.toString());
                       ref.invalidate(investmentPortfolioProvider);
                     } on DioException catch (e) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(dioErrorMessage(e))),
+                        );
                       }
                     }
                   },
-                  child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  child: Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -369,7 +443,11 @@ class InvestmentsScreen extends ConsumerWidget {
 }
 
 class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({required this.label, required this.value, required this.color});
+  const _SummaryTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -380,7 +458,9 @@ class _SummaryTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -389,13 +469,17 @@ class _SummaryTile extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: color.withValues(alpha: 0.55),
-                ),
+              color: color.withValues(alpha: 0.55),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 14, color: color),
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: color,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

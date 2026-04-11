@@ -66,7 +66,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Upload document', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Upload document',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 12),
                   InputDecorator(
                     decoration: const InputDecoration(labelText: 'Category'),
@@ -76,7 +79,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         isExpanded: true,
                         items: const [
                           DropdownMenuItem(value: 'bill', child: Text('Bill')),
-                          DropdownMenuItem(value: 'insurance', child: Text('Insurance')),
+                          DropdownMenuItem(
+                            value: 'insurance',
+                            child: Text('Insurance'),
+                          ),
                         ],
                         onChanged: (v) => setModal(() => type = v ?? 'bill'),
                       ),
@@ -93,7 +99,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () async {
-                      final r = await FilePicker.platform.pickFiles(withData: kIsWeb);
+                      final r = await FilePicker.platform.pickFiles(
+                        withData: kIsWeb,
+                      );
                       if (r != null && r.files.isNotEmpty) {
                         setModal(() => picked = r.files.single);
                       }
@@ -117,7 +125,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                   type: type,
                                   tagsCommaSeparated: tagsCtrl.text,
                                 );
-                              } else if (!kIsWeb && f.path != null && f.path!.isNotEmpty) {
+                              } else if (!kIsWeb &&
+                                  f.path != null &&
+                                  f.path!.isNotEmpty) {
                                 await api.upload(
                                   filePath: f.path!,
                                   fileName: f.name,
@@ -130,7 +140,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               ref.invalidate(documentsListProvider);
                               if (rootContext.mounted) {
                                 ScaffoldMessenger.of(rootContext).showSnackBar(
-                                  const SnackBar(content: Text('Upload complete')),
+                                  const SnackBar(
+                                    content: Text('Upload complete'),
+                                  ),
                                 );
                               }
                             } catch (e) {
@@ -156,7 +168,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   Future<void> _editTags(Map<String, dynamic> row) async {
     final id = row['id'] as String? ?? '';
     if (id.isEmpty) return;
-    final tags = (row['tags'] as List<dynamic>?)?.map((e) => '$e').toList() ?? <String>[];
+    final tags =
+        (row['tags'] as List<dynamic>?)?.map((e) => '$e').toList() ??
+        <String>[];
     final ctrl = TextEditingController(text: tags.join(', '));
     final ok = await showDialog<bool>(
       context: context,
@@ -168,8 +182,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           maxLines: 2,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -183,11 +203,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         await ref.read(documentsApiProvider).updateTags(id, next);
         ref.invalidate(documentsListProvider);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tags updated')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Tags updated')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed: $e')));
         }
       }
     }
@@ -225,7 +249,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: LedgerSectionLayer(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -242,7 +269,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             ref.invalidate(documentsListProvider);
                           },
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         isDense: true,
                       ),
                       textInputAction: TextInputAction.search,
@@ -260,7 +289,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           label: const Text('All types'),
                           selected: query.type == null,
                           onSelected: (_) {
-                            ref.read(documentsQueryProvider.notifier).setType(null);
+                            ref
+                                .read(documentsQueryProvider.notifier)
+                                .setType(null);
                             ref.invalidate(documentsListProvider);
                           },
                         ),
@@ -268,7 +299,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           label: const Text('Bills'),
                           selected: query.type == 'bill',
                           onSelected: (_) {
-                            ref.read(documentsQueryProvider.notifier).setType('bill');
+                            ref
+                                .read(documentsQueryProvider.notifier)
+                                .setType('bill');
                             ref.invalidate(documentsListProvider);
                           },
                         ),
@@ -276,7 +309,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           label: const Text('Insurance'),
                           selected: query.type == 'insurance',
                           onSelected: (_) {
-                            ref.read(documentsQueryProvider.notifier).setType('insurance');
+                            ref
+                                .read(documentsQueryProvider.notifier)
+                                .setType('insurance');
                             ref.invalidate(documentsListProvider);
                           },
                         ),
@@ -288,14 +323,18 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       decoration: InputDecoration(
                         labelText: 'Filter by tag',
                         hintText: 'exact tag, e.g. medical',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         isDense: true,
                         suffixIcon: query.tag != null && query.tag!.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
                                 onPressed: () {
                                   _tagCtrl.clear();
-                                  ref.read(documentsQueryProvider.notifier).setTag(null);
+                                  ref
+                                      .read(documentsQueryProvider.notifier)
+                                      .setTag(null);
                                   ref.invalidate(documentsListProvider);
                                 },
                               )
@@ -303,7 +342,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       ),
                       textInputAction: TextInputAction.search,
                       onSubmitted: (v) {
-                        ref.read(documentsQueryProvider.notifier).setTag(v.trim());
+                        ref
+                            .read(documentsQueryProvider.notifier)
+                            .setTag(v.trim());
                         ref.invalidate(documentsListProvider);
                       },
                     ),
@@ -320,8 +361,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     child: Text(
                       'No documents match your filters.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.55),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
                     ),
                   );
                 }
@@ -333,13 +374,22 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     itemBuilder: (context, i) {
                       final row = rows[i];
                       final id = row['id'] as String? ?? '';
-                      final name = row['originalName'] as String? ?? row['fileUrl'] as String? ?? 'Document';
+                      final name =
+                          row['originalName'] as String? ??
+                          row['fileUrl'] as String? ??
+                          'Document';
                       final type = row['type'] as String? ?? '';
-                      final tags = (row['tags'] as List<dynamic>?)?.map((e) => '$e').toList() ?? [];
+                      final tags =
+                          (row['tags'] as List<dynamic>?)
+                              ?.map((e) => '$e')
+                              .toList() ??
+                          [];
                       final uploaded = row['uploadedAt'] as String?;
                       DateTime? dt;
                       if (uploaded != null) dt = DateTime.tryParse(uploaded);
-                      final subtitle = dt != null ? DateFormat.yMMMd().add_jm().format(dt.toLocal()) : '';
+                      final subtitle = dt != null
+                          ? DateFormat.yMMMd().add_jm().format(dt.toLocal())
+                          : '';
                       final mime = row['mimeType'] as String?;
 
                       return Padding(
@@ -347,26 +397,44 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         child: LedgerStaggerItem(
                           marginBottom: 0,
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            title: Text(
+                              name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (subtitle.isNotEmpty)
-                                  Text(subtitle, style: Theme.of(context).textTheme.labelSmall),
+                                  Text(
+                                    subtitle,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
+                                  ),
                                 const SizedBox(height: 6),
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 4,
                                   children: [
                                     Chip(
-                                      label: Text(type, style: const TextStyle(fontSize: 12)),
+                                      label: Text(
+                                        type,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
                                       visualDensity: VisualDensity.compact,
                                       padding: EdgeInsets.zero,
                                     ),
                                     ...tags.map(
                                       (t) => Chip(
-                                        label: Text(t, style: const TextStyle(fontSize: 12)),
+                                        label: Text(
+                                          t,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
                                         visualDensity: VisualDensity.compact,
                                         padding: EdgeInsets.zero,
                                       ),
@@ -401,7 +469,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('$e'))),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('$e'),
+                ),
+              ),
             ),
           ),
         ],

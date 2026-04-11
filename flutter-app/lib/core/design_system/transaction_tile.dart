@@ -3,6 +3,19 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/money_flow_tokens.dart';
 
+Color _categoryColor(String? name) {
+  final colors = [
+    Color(0xFF10B981),
+    Color(0xFF6366F1),
+    Color(0xFFF59E0B),
+    Color(0xFFEC4899),
+    Color(0xFF3B82F6),
+    Color(0xFF8B5CF6),
+  ];
+  final idx = (name?.codeUnits.fold(0, (a, b) => a + b) ?? 0) % colors.length;
+  return colors[idx];
+}
+
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
     super.key,
@@ -45,7 +58,9 @@ class TransactionTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  gradient: isExpense ? expenseGradient(avatarColor) : incomeGradient(),
+                  gradient: isExpense
+                      ? expenseGradient(avatarColor)
+                      : incomeGradient(),
                   borderRadius: BorderRadius.circular(MfRadius.sm),
                 ),
                 alignment: Alignment.center,
@@ -63,15 +78,30 @@ class TransactionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _categoryColor(title),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: cs.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: MfSpace.xs - 2),
                     Text(
@@ -91,7 +121,9 @@ class TransactionTile extends StatelessWidget {
                 style: GoogleFonts.dmMono(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isExpense ? MfPalette.expenseRed : MfPalette.incomeGreen,
+                  color: isExpense
+                      ? MfPalette.expenseRed
+                      : MfPalette.incomeGreen,
                 ),
               ),
               if (endAction != null) ...[

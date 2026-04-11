@@ -367,43 +367,67 @@ class _BrandPanel extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(48, 56, 40, 56),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'MoneyFlow',
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 3.2,
-                  color: Colors.white.withValues(alpha: 0.72),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'AI',
-                style: GoogleFonts.manrope(
-                  fontSize: 56,
-                  fontWeight: FontWeight.w700,
-                  height: 0.95,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                'The intelligent monolith for personal finance — editorial clarity, quiet structure, and a private-office feel.',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  height: 1.55,
-                  color: Colors.white.withValues(alpha: 0.88),
-                ),
-              ),
-              const Spacer(),
               Row(
                 children: [
-                  _BrandStat(label: 'Ledger', value: 'Real-time'),
-                  const SizedBox(width: 28),
-                  _BrandStat(label: 'Insights', value: 'Heuristic + AI'),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.account_balance_wallet,
+                      color: cs.onPrimary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'MoneyFlow',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 48),
+              Text(
+                'Your finances,\nclearer than ever.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 38,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Track spending, understand patterns,\nand build better money habits.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 48),
+              const _FeaturePill(
+                icon: Icons.offline_bolt_outlined,
+                label: 'Works offline',
+              ),
+              const SizedBox(height: 10),
+              const _FeaturePill(
+                icon: Icons.bar_chart,
+                label: 'AI-powered insights',
+              ),
+              const SizedBox(height: 10),
+              const _FeaturePill(
+                icon: Icons.lock_outline,
+                label: 'Your data stays private',
               ),
             ],
           ),
@@ -461,40 +485,6 @@ class _BrandHeader extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BrandStat extends StatelessWidget {
-  const _BrandStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
-            color: Colors.white.withValues(alpha: 0.5),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.manrope(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.95),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -617,6 +607,39 @@ class _AuthPills extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(children: [pill(0, 'Sign in'), pill(1, 'Sign up')]),
+    );
+  }
+}
+
+class _FeaturePill extends StatelessWidget {
+  const _FeaturePill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

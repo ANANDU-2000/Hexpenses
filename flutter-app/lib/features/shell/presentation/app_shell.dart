@@ -50,13 +50,16 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Color(0xF00D1120),
-          border: Border(
-            top: BorderSide(color: Color(0x14FFFFFF), width: 1),
-          ),
+          border: Border(top: BorderSide(color: Color(0x14FFFFFF), width: 1)),
         ),
         padding: EdgeInsets.only(bottom: bottomInset),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(MfSpace.md, MfSpace.sm, MfSpace.md, MfSpace.sm),
+          padding: const EdgeInsets.fromLTRB(
+            MfSpace.md,
+            MfSpace.sm,
+            MfSpace.md,
+            MfSpace.sm,
+          ),
           child: NavigationBar(
             height: 60,
             backgroundColor: Colors.transparent,

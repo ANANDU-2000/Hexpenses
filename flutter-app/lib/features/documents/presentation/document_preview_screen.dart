@@ -19,7 +19,8 @@ class DocumentPreviewScreen extends ConsumerStatefulWidget {
   final String? mimeType;
 
   @override
-  ConsumerState<DocumentPreviewScreen> createState() => _DocumentPreviewScreenState();
+  ConsumerState<DocumentPreviewScreen> createState() =>
+      _DocumentPreviewScreenState();
 }
 
 class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
@@ -50,7 +51,9 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
       _error = null;
     });
     try {
-      final bytes = await ref.read(documentsApiProvider).fetchFileBytes(widget.documentId);
+      final bytes = await ref
+          .read(documentsApiProvider)
+          .fetchFileBytes(widget.documentId);
       if (!mounted) return;
       final u8 = Uint8List.fromList(bytes);
       _pdf?.dispose();
@@ -87,23 +90,23 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(_error!, textAlign: TextAlign.center),
-                  ),
-                )
-              : _bytes == null
-                  ? const SizedBox.shrink()
-                  : _isImage
-                      ? InteractiveViewer(
-                          minScale: 0.5,
-                          maxScale: 4,
-                          child: Center(child: Image.memory(_bytes!, fit: BoxFit.contain)),
-                        )
-                      : _isPdf && _pdf != null
-                          ? PdfViewPinch(controller: _pdf!)
-                          : _fallback(cs),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_error!, textAlign: TextAlign.center),
+              ),
+            )
+          : _bytes == null
+          ? const SizedBox.shrink()
+          : _isImage
+          ? InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: Center(child: Image.memory(_bytes!, fit: BoxFit.contain)),
+            )
+          : _isPdf && _pdf != null
+          ? PdfViewPinch(controller: _pdf!)
+          : _fallback(cs),
     );
   }
 
@@ -114,7 +117,11 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.insert_drive_file_outlined, size: 56, color: cs.onSurface.withValues(alpha: 0.45)),
+            Icon(
+              Icons.insert_drive_file_outlined,
+              size: 56,
+              color: cs.onSurface.withValues(alpha: 0.45),
+            ),
             const SizedBox(height: 16),
             Text(
               'Preview is only available for images and PDFs.',

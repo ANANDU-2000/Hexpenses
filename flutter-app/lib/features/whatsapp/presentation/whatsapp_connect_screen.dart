@@ -9,7 +9,8 @@ class WhatsappConnectScreen extends ConsumerStatefulWidget {
   const WhatsappConnectScreen({super.key});
 
   @override
-  ConsumerState<WhatsappConnectScreen> createState() => _WhatsappConnectScreenState();
+  ConsumerState<WhatsappConnectScreen> createState() =>
+      _WhatsappConnectScreenState();
 }
 
 class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
@@ -29,7 +30,8 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
     await ref.read(whatsappLinkStatusProvider.future);
   }
 
-  bool _isConnected(Map<String, dynamic> s) => s['verified'] == true || s['connected'] == true;
+  bool _isConnected(Map<String, dynamic> s) =>
+      s['verified'] == true || s['connected'] == true;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +46,11 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
           Text(
             'Optional: link WhatsApp to receive daily summaries and budget alerts on your phone. '
             'You can use the app fully without linking.',
-            style: GoogleFonts.inter(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.65), height: 1.45),
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: cs.onSurface.withValues(alpha: 0.65),
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 20),
           statusAsync.when(
@@ -58,15 +64,21 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
                 color: cs.surfaceContainerLow,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+                  side: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
                       Icon(
-                        connected ? Icons.check_circle_rounded : Icons.chat_outlined,
-                        color: connected ? const Color(0xFF0D9F6E) : cs.onSurface.withValues(alpha: 0.45),
+                        connected
+                            ? Icons.check_circle_rounded
+                            : Icons.chat_outlined,
+                        color: connected
+                            ? const Color(0xFF0D9F6E)
+                            : cs.onSurface.withValues(alpha: 0.45),
                         size: 28,
                       ),
                       const SizedBox(width: 14),
@@ -76,7 +88,10 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
                           children: [
                             Text(
                               connected ? 'Connected' : 'Not connected',
-                              style: GoogleFonts.manrope(fontSize: 17, fontWeight: FontWeight.w700),
+                              style: GoogleFonts.manrope(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             if (connected && raw['phoneE164'] != null)
                               Text(
@@ -104,7 +119,8 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (Object? error, StackTrace stackTrace) => const SizedBox.shrink(),
+            error: (Object? error, StackTrace stackTrace) =>
+                const SizedBox.shrink(),
           ),
           const SizedBox(height: 24),
           statusAsync.maybeWhen(
@@ -127,7 +143,11 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
                   final phone = _phoneCtrl.text.trim();
                   if (phone.length < 10) {
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Enter a valid number in E.164 format (e.g. +9198…)')),
+                      const SnackBar(
+                        content: Text(
+                          'Enter a valid number in E.164 format (e.g. +9198…)',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -139,11 +159,18 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
                     if (!context.mounted) return;
                     if (code != null && code.isNotEmpty) {
                       messenger.showSnackBar(
-                        SnackBar(content: Text('Dev code: $code'), duration: const Duration(seconds: 8)),
+                        SnackBar(
+                          content: Text('Dev code: $code'),
+                          duration: const Duration(seconds: 8),
+                        ),
                       );
                     } else {
                       messenger.showSnackBar(
-                        const SnackBar(content: Text('Verification code sent — check your messages.')),
+                        const SnackBar(
+                          content: Text(
+                            'Verification code sent — check your messages.',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
@@ -177,7 +204,8 @@ class _WhatsappConnectScreenState extends ConsumerState<WhatsappConnectScreen> {
                       );
                       await _refresh();
                     } else {
-                      final err = res['error']?.toString() ?? 'Verification failed';
+                      final err =
+                          res['error']?.toString() ?? 'Verification failed';
                       messenger.showSnackBar(SnackBar(content: Text(err)));
                     }
                   } catch (e) {
@@ -290,9 +318,15 @@ class _PrefsTogglesState extends ConsumerState<_PrefsToggles> {
     _alerts = widget.initialAlerts;
   }
 
-  Future<void> _patch({bool? dailySummary, bool? monthlyReport, bool? alerts}) async {
+  Future<void> _patch({
+    bool? dailySummary,
+    bool? monthlyReport,
+    bool? alerts,
+  }) async {
     try {
-      await ref.read(whatsappApiProvider).updatePreferences(
+      await ref
+          .read(whatsappApiProvider)
+          .updatePreferences(
             dailySummary: dailySummary,
             monthlyReport: monthlyReport,
             alerts: alerts,
@@ -307,7 +341,10 @@ class _PrefsTogglesState extends ConsumerState<_PrefsToggles> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Notifications on WhatsApp', style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(
+          'Notifications on WhatsApp',
+          style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,

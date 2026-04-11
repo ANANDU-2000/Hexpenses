@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+
 import 'db/ledger_database.dart';
 
 double _parseAmount(dynamic v) {
@@ -12,16 +14,23 @@ bool _expenseInMonth(Map<String, dynamic> e, int year, int month) {
   return d != null && d.year == year && d.month == month;
 }
 
-Future<List<Map<String, dynamic>>> _loadExpensePayloads(LedgerDatabase db) async {
-  final rows = await (db.select(db.cachedExpenses)
-        ..where((t) => t.syncStatus.isNotValue(LedgerSyncStatus.pendingDelete.index)))
-      .get();
+Future<List<Map<String, dynamic>>> _loadExpensePayloads(
+  LedgerDatabase db,
+) async {
+  final rows =
+      await (db.select(db.cachedExpenses)..where(
+            (t) =>
+                t.syncStatus.isNotValue(LedgerSyncStatus.pendingDelete.index),
+          ))
+          .get();
   return rows
       .map((r) => Map<String, dynamic>.from(jsonDecode(r.payloadJson) as Map))
       .toList();
 }
 
-Future<Map<String, dynamic>> buildOfflineMonthlySummary(LedgerDatabase db) async {
+Future<Map<String, dynamic>> buildOfflineMonthlySummary(
+  LedgerDatabase db,
+) async {
   final expenses = await _loadExpensePayloads(db);
   final now = DateTime.now();
   final ym = '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -41,7 +50,9 @@ Future<Map<String, dynamic>> buildOfflineMonthlySummary(LedgerDatabase db) async
   };
 }
 
-Future<Map<String, dynamic>> buildOfflineDashboardOverview(LedgerDatabase db) async {
+Future<Map<String, dynamic>> buildOfflineDashboardOverview(
+  LedgerDatabase db,
+) async {
   final expenses = await _loadExpensePayloads(db);
   final now = DateTime.now();
   final month = await buildOfflineMonthlySummary(db);
@@ -82,14 +93,17 @@ Future<Map<String, dynamic>> buildOfflineDashboardOverview(LedgerDatabase db) as
   };
 }
 
-Future<List<Map<String, dynamic>>> buildOfflineCategoryBreakdown(LedgerDatabase db) async {
+Future<List<Map<String, dynamic>>> buildOfflineCategoryBreakdown(
+  LedgerDatabase db,
+) async {
   final expenses = await _loadExpensePayloads(db);
   final now = DateTime.now();
   final byCat = <String, double>{};
   for (final e in expenses) {
     if (!_expenseInMonth(e, now.year, now.month)) continue;
     final cat = e['category'];
-    final cid = e['categoryId']?.toString() ??
+    final cid =
+        e['categoryId']?.toString() ??
         (cat is Map ? cat['id']?.toString() : null) ??
         'unknown';
     byCat[cid] = (byCat[cid] ?? 0) + _parseAmount(e['amount']);
@@ -100,10 +114,35 @@ Future<List<Map<String, dynamic>>> buildOfflineCategoryBreakdown(LedgerDatabase 
 }
 
 Map<String, dynamic> offlineTaxSummaryPlaceholder() => {
-      'period': 'Offline demo',
-      'totals': {
-        'taxableExpenseCount': 0,
-        'totalTaxableExpenseAmount': '0',
-        'totalTaxAmount': '0',
-      },
-    };
+  'period': 'Offline demo',
+  'totals': {
+    'taxableExpenseCount': 0,
+    'totalTaxableExpenseAmount': '0',
+    'totalTaxAmount': '0',
+  },
+};
+
+class OfflineModeBanner extends StatelessWidget {
+  const OfflineModeBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return MaterialBanner(
+      backgroundColor: cs.tertiaryContainer,
+      content: Text(
+        'Offline mode — changes sync when you reconnect',
+        style: TextStyle(color: cs.onTertiaryContainer),
+      ),
+      leading: Icon(Icons.cloud_off_outlined, color: cs.onTertiaryContainer),
+      actions: [
+        TextButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+          },
+          child: const Text('Got it'),
+        ),
+      ],
+    );
+  }
+}

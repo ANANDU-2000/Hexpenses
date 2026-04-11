@@ -9,7 +9,10 @@ class AuthApi {
 
   final Dio _dio;
 
-  Future<({String access, String refresh, String? sessionId})> login(String email, String password) async {
+  Future<({String access, String refresh, String? sessionId})> login(
+    String email,
+    String password,
+  ) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/auth/login',
       data: {'email': email.trim(), 'password': password},
@@ -35,7 +38,9 @@ class AuthApi {
     return _tokensFrom(res.data);
   }
 
-  ({String access, String refresh, String? sessionId}) _tokensFrom(Map<String, dynamic>? raw) {
+  ({String access, String refresh, String? sessionId}) _tokensFrom(
+    Map<String, dynamic>? raw,
+  ) {
     final data = unwrapApiMap(raw) ?? raw ?? <String, dynamic>{};
     final access = data['access'] as String? ?? '';
     final refresh = data['refresh'] as String? ?? '';
@@ -45,4 +50,6 @@ class AuthApi {
   }
 }
 
-final authApiProvider = Provider<AuthApi>((ref) => AuthApi(ref.watch(dioProvider)));
+final authApiProvider = Provider<AuthApi>(
+  (ref) => AuthApi(ref.watch(dioProvider)),
+);

@@ -40,10 +40,14 @@ class WhatsappApi {
       'dailySummary': ?dailySummary,
       'monthlyReport': ?monthlyReport,
       'alerts': ?alerts,
-      'phoneE164': ?(phoneE164 != null && phoneE164.isNotEmpty ? phoneE164 : null),
+      'phoneE164': ?(phoneE164 != null && phoneE164.isNotEmpty
+          ? phoneE164
+          : null),
     };
     await _dio.patch<dynamic>('/whatsapp/preferences', data: data);
   }
 }
 
-final whatsappApiProvider = Provider<WhatsappApi>((ref) => WhatsappApi(ref.watch(dioProvider)));
+final whatsappApiProvider = Provider<WhatsappApi>(
+  (ref) => WhatsappApi(ref.watch(dioProvider)),
+);

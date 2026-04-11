@@ -10,7 +10,10 @@ const kApiBase = String.fromEnvironment(
 );
 
 /// Skip login and open the main shell (for UI / layout work only). Data calls will fail without a backend.
-const kDevOfflineUi = bool.fromEnvironment('DEV_OFFLINE_UI', defaultValue: false);
+const kDevOfflineUi = bool.fromEnvironment(
+  'DEV_OFFLINE_UI',
+  defaultValue: false,
+);
 
 /// Full local-only mode: no Nest server, no login. Dashboard/expenses use Drift + bundled demo categories & a seed account.
 const kNoApiFromEnv = bool.fromEnvironment('NO_API', defaultValue: false);

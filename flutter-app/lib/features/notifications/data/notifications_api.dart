@@ -29,7 +29,9 @@ class NotificationsApi {
   }
 
   Future<Map<String, dynamic>> markRead(String id) async {
-    final res = await _dio.patch<Map<String, dynamic>>('/notifications/$id/read');
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/notifications/$id/read',
+    );
     return unwrapApiMap(res.data) ?? res.data ?? {};
   }
 
@@ -38,5 +40,6 @@ class NotificationsApi {
   }
 }
 
-final notificationsApiProvider =
-    Provider<NotificationsApi>((ref) => NotificationsApi(ref.watch(dioProvider)));
+final notificationsApiProvider = Provider<NotificationsApi>(
+  (ref) => NotificationsApi(ref.watch(dioProvider)),
+);

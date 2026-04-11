@@ -16,7 +16,9 @@ List<Map<String, dynamic>> unwrapApiList(dynamic raw) {
   if (raw is Map) {
     final m = Map<String, dynamic>.from(raw);
     if (m['success'] == true && m['data'] is List) {
-      return (m['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      return (m['data'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
     }
     final d = m['data'];
     if (d is List) {

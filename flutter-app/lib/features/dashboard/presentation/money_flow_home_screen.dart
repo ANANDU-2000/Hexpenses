@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/api_config.dart';
 import '../../../core/design_system/app_button.dart';
 import '../../../core/design_system/app_card.dart';
 import '../../../core/design_system/app_skeleton.dart';
 import '../../../core/design_system/transaction_tile.dart';
 import '../../../core/navigation/ledger_page_routes.dart';
+import '../../../core/offline/no_api_dashboard.dart';
 import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/money_flow_tokens.dart';
@@ -26,13 +28,24 @@ final userEmailProvider = Provider<String?>((ref) {
   return ref.read(tokenStorageProvider).userEmail;
 });
 
-final _homeCompactCurrencyFormatter = NumberFormat.compact(locale: 'en_IN');
-
 String _formatHomeCurrency(dynamic raw) {
-  final value = double.tryParse(raw?.toString() ?? '') ?? 0;
-  final body =
-      '${MfCurrency.symbol}${_homeCompactCurrencyFormatter.format(value.abs())}';
-  return value < 0 ? '-$body' : body;
+  final value = num.tryParse(raw?.toString() ?? '') ?? 0;
+  final abs = value.abs();
+  final sign = value < 0 ? '-' : '';
+  if (abs >= 10000000) {
+    final crore = abs / 10000000;
+    final digits = crore == crore.truncateToDouble() ? 0 : 1;
+    return '$sign\u20B9${crore.toStringAsFixed(digits)}Cr';
+  } else if (abs >= 100000) {
+    final lakh = abs / 100000;
+    final digits = lakh == lakh.truncateToDouble() ? 0 : 1;
+    return '$sign\u20B9${lakh.toStringAsFixed(digits)}L';
+  }
+  return NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '\u20B9',
+    decimalDigits: value == value.roundToDouble() ? 0 : 2,
+  ).format(value);
 }
 
 String _greetingFirstName(String? email) {
@@ -110,6 +123,10 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (kNoApiMode) ...[
+                        const OfflineModeBanner(),
+                        const SizedBox(height: MfSpace.lg),
+                      ],
                       Text(
                         'Hello $name',
                         style: GoogleFonts.dmSans(
@@ -169,7 +186,9 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                                     )
                                     .toList()
                               : <Map<String, dynamic>>[];
-                          if (trend.isEmpty) return const SizedBox.shrink();
+                          if (trend.isEmpty) {
+                            return _EmptyTrendState(cs: cs);
+                          }
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -324,6 +343,11 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                                     const SnackBar(
                                       content: Text('Removed'),
                                       behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(10),
+                                        ),
+                                      ),
                                     ),
                                   );
                                 }
@@ -345,7 +369,7 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
               error: (e, _) => SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: MfSpace.xxl),
-                  child: Text('$e'),
+                  child: Text('Something went wrong. Please try refreshing.'),
                 ),
               ),
             ),
@@ -376,7 +400,9 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(MfSpace.md),
                             decoration: BoxDecoration(
-                              color: MfPalette.incomeGreen.withValues(alpha: 0.12),
+                              color: MfPalette.incomeGreen.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(MfRadius.sm),
                             ),
                             child: const Icon(
@@ -472,6 +498,54 @@ class _BalanceHighlight extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EmptyTrendState extends StatelessWidget {
+  const _EmptyTrendState({required this.cs});
+
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Income vs expenses', style: theme.textTheme.titleLarge),
+        const SizedBox(height: MfSpace.sm),
+        Text(
+          'Your monthly flow chart will appear here',
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: MfSpace.lg),
+        Container(
+          height: 140,
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.bar_chart_outlined,
+                size: 40,
+                color: cs.primary.withValues(alpha: 0.4),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add income & expenses to see your flow',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface.withValues(alpha: 0.45),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

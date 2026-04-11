@@ -35,4 +35,6 @@ class InsuranceApi {
   }
 }
 
-final insuranceApiProvider = Provider<InsuranceApi>((ref) => InsuranceApi(ref.watch(dioProvider)));
+final insuranceApiProvider = Provider<InsuranceApi>(
+  (ref) => InsuranceApi(ref.watch(dioProvider)),
+);

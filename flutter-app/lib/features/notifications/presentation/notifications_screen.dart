@@ -54,7 +54,10 @@ class NotificationsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Filters', style: Theme.of(context).textTheme.labelLarge),
+                    Text(
+                      'Filters',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -64,7 +67,9 @@ class NotificationsScreen extends ConsumerWidget {
                           label: const Text('Unread only'),
                           selected: filters.unreadOnly,
                           onSelected: (v) {
-                            ref.read(notificationFiltersProvider.notifier).setUnreadOnly(v);
+                            ref
+                                .read(notificationFiltersProvider.notifier)
+                                .setUnreadOnly(v);
                             ref.invalidate(notificationsListProvider);
                           },
                         ),
@@ -72,7 +77,9 @@ class NotificationsScreen extends ConsumerWidget {
                           label: const Text('All types'),
                           selected: filters.category == null,
                           onSelected: (_) {
-                            ref.read(notificationFiltersProvider.notifier).setCategory(null);
+                            ref
+                                .read(notificationFiltersProvider.notifier)
+                                .setCategory(null);
                             ref.invalidate(notificationsListProvider);
                           },
                         ),
@@ -81,7 +88,9 @@ class NotificationsScreen extends ConsumerWidget {
                             label: Text(c),
                             selected: filters.category == c,
                             onSelected: (_) {
-                              ref.read(notificationFiltersProvider.notifier).setCategory(c);
+                              ref
+                                  .read(notificationFiltersProvider.notifier)
+                                  .setCategory(c);
                               ref.invalidate(notificationsListProvider);
                             },
                           ),
@@ -101,13 +110,14 @@ class NotificationsScreen extends ConsumerWidget {
                     child: Text(
                       'No notifications yet',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.55),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
                     ),
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(notificationsListProvider),
+                  onRefresh: () async =>
+                      ref.invalidate(notificationsListProvider),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: rows.length,
@@ -139,12 +149,22 @@ class NotificationsScreen extends ConsumerWidget {
                               onTap: unread && id.isNotEmpty
                                   ? () async {
                                       try {
-                                        await ref.read(notificationsApiProvider).markRead(id);
-                                        ref.invalidate(notificationsListProvider);
+                                        await ref
+                                            .read(notificationsApiProvider)
+                                            .markRead(id);
+                                        ref.invalidate(
+                                          notificationsListProvider,
+                                        );
                                       } catch (e) {
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Could not mark read: $e')),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Could not mark read: $e',
+                                              ),
+                                            ),
                                           );
                                         }
                                       }
@@ -158,36 +178,61 @@ class NotificationsScreen extends ConsumerWidget {
                                     Container(
                                       width: 8,
                                       height: 8,
-                                      margin: const EdgeInsets.only(top: 6, right: 12),
+                                      margin: const EdgeInsets.only(
+                                        top: 6,
+                                        right: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: unread ? cs.primary : cs.outline.withValues(alpha: 0.35),
+                                        color: unread
+                                            ? cs.primary
+                                            : cs.outline.withValues(
+                                                alpha: 0.35,
+                                              ),
                                       ),
                                     ),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
                                               Expanded(
                                                 child: Text(
                                                   title,
-                                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                                        fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                        fontWeight: unread
+                                                            ? FontWeight.w700
+                                                            : FontWeight.w500,
                                                       ),
                                                 ),
                                               ),
                                               if (category.isNotEmpty)
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2,
+                                                      ),
                                                   decoration: BoxDecoration(
-                                                    color: cs.primaryContainer.withValues(alpha: 0.55),
-                                                    borderRadius: BorderRadius.circular(8),
+                                                    color: cs.primaryContainer
+                                                        .withValues(
+                                                          alpha: 0.55,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
                                                   ),
                                                   child: Text(
                                                     category,
-                                                    style: Theme.of(context).textTheme.labelSmall,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.labelSmall,
                                                   ),
                                                 ),
                                             ],
@@ -196,8 +241,14 @@ class NotificationsScreen extends ConsumerWidget {
                                             const SizedBox(height: 6),
                                             Text(
                                               body,
-                                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                                    color: cs.onSurface.withValues(alpha: 0.85),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.copyWith(
+                                                    color: cs.onSurface
+                                                        .withValues(
+                                                          alpha: 0.85,
+                                                        ),
                                                   ),
                                             ),
                                           ],
@@ -205,8 +256,14 @@ class NotificationsScreen extends ConsumerWidget {
                                             const SizedBox(height: 8),
                                             Text(
                                               subtitle,
-                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                    color: cs.onSurface.withValues(alpha: 0.45),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                    color: cs.onSurface
+                                                        .withValues(
+                                                          alpha: 0.45,
+                                                        ),
                                                   ),
                                             ),
                                           ],
@@ -225,7 +282,12 @@ class NotificationsScreen extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('$e'))),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('$e'),
+                ),
+              ),
             ),
           ),
         ],

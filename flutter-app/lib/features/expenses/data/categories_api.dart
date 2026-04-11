@@ -20,4 +20,6 @@ class CategoriesApi {
   }
 }
 
-final categoriesApiProvider = Provider<CategoriesApi>((ref) => CategoriesApi(ref.watch(dioProvider)));
+final categoriesApiProvider = Provider<CategoriesApi>(
+  (ref) => CategoriesApi(ref.watch(dioProvider)),
+);

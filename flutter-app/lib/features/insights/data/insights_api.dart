@@ -29,7 +29,10 @@ class InsightsApi {
 
   static List<String> _stringList(dynamic raw) {
     if (raw is! List) return [];
-    return raw.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+    return raw
+        .map((e) => e?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   Future<AiInsightsPayload> fetch() async {
@@ -37,7 +40,8 @@ class InsightsApi {
     final data = unwrapApiMap(res.data) ?? <String, dynamic>{};
     return AiInsightsPayload(
       source: data['source'] as String?,
-      monthlyFinancialSummary: data['monthlyFinancialSummary']?.toString() ?? '',
+      monthlyFinancialSummary:
+          data['monthlyFinancialSummary']?.toString() ?? '',
       spendingWarnings: _stringList(data['spendingWarnings']),
       savingSuggestions: _stringList(data['savingSuggestions']),
       budgetRecommendations: _stringList(data['budgetRecommendations']),
@@ -64,4 +68,6 @@ class InsightsApi {
   }
 }
 
-final insightsApiProvider = Provider<InsightsApi>((ref) => InsightsApi(ref.watch(dioProvider)));
+final insightsApiProvider = Provider<InsightsApi>(
+  (ref) => InsightsApi(ref.watch(dioProvider)),
+);

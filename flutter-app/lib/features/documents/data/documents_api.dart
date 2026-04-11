@@ -40,7 +40,8 @@ class DocumentsApi {
   }) async {
     final form = FormData.fromMap({
       'type': type,
-      if (tagsCommaSeparated != null && tagsCommaSeparated.trim().isNotEmpty) 'tags': tagsCommaSeparated.trim(),
+      if (tagsCommaSeparated != null && tagsCommaSeparated.trim().isNotEmpty)
+        'tags': tagsCommaSeparated.trim(),
       'file': await MultipartFile.fromFile(filePath, filename: fileName),
     });
     final res = await _dio.post<dynamic>('/documents/upload', data: form);
@@ -59,7 +60,8 @@ class DocumentsApi {
   }) async {
     final form = FormData.fromMap({
       'type': type,
-      if (tagsCommaSeparated != null && tagsCommaSeparated.trim().isNotEmpty) 'tags': tagsCommaSeparated.trim(),
+      if (tagsCommaSeparated != null && tagsCommaSeparated.trim().isNotEmpty)
+        'tags': tagsCommaSeparated.trim(),
       'file': MultipartFile.fromBytes(bytes, filename: fileName),
     });
     final res = await _dio.post<dynamic>('/documents/upload', data: form);
@@ -92,4 +94,6 @@ class DocumentsApi {
   }
 }
 
-final documentsApiProvider = Provider<DocumentsApi>((ref) => DocumentsApi(ref.watch(dioProvider)));
+final documentsApiProvider = Provider<DocumentsApi>(
+  (ref) => DocumentsApi(ref.watch(dioProvider)),
+);

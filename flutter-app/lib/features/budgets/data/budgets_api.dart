@@ -12,9 +12,7 @@ class BudgetsApi {
   Future<Response<dynamic>> rawListResponse({String? month}) {
     return _dio.get<dynamic>(
       '/budgets',
-      queryParameters: {
-        if (month != null && month.isNotEmpty) 'month': month,
-      },
+      queryParameters: {if (month != null && month.isNotEmpty) 'month': month},
     );
   }
 
@@ -26,9 +24,14 @@ class BudgetsApi {
   Future<List<Map<String, dynamic>>> list({String? month}) async {
     final res = await rawListResponse(month: month);
     final data = res.data;
-    if (data is List) return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    if (data is Map<String, dynamic> && data['success'] == true && data['data'] is List) {
-      return (data['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    if (data is List)
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    if (data is Map<String, dynamic> &&
+        data['success'] == true &&
+        data['data'] is List) {
+      return (data['data'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
     }
     return [];
   }
@@ -54,4 +57,6 @@ class BudgetsApi {
   }
 }
 
-final budgetsApiProvider = Provider<BudgetsApi>((ref) => BudgetsApi(ref.watch(dioProvider)));
+final budgetsApiProvider = Provider<BudgetsApi>(
+  (ref) => BudgetsApi(ref.watch(dioProvider)),
+);

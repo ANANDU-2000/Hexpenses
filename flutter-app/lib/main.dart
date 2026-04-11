@@ -15,9 +15,7 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        tokenStorageProvider.overrideWithValue(storage),
-      ],
+      overrides: [tokenStorageProvider.overrideWithValue(storage)],
       child: const MoneyflowApp(),
     ),
   );
