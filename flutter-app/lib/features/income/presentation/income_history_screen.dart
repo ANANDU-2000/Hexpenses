@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/dio_errors.dart';
+import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/widgets/ledger_ui.dart';
 import '../../accounts/application/account_providers.dart';
 import '../../dashboard/application/dashboard_providers.dart';
@@ -22,7 +23,11 @@ class IncomeHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 2);
+    final fmt = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '\u20B9',
+      decimalDigits: 2,
+    );
     final async = ref.watch(incomesProvider);
 
     return Scaffold(
@@ -32,6 +37,7 @@ class IncomeHistoryScreen extends ConsumerWidget {
         data: (list) => RefreshIndicator(
           color: cs.primary,
           onRefresh: () async {
+            await ref.read(ledgerSyncServiceProvider).pullAndFlush();
             ref.invalidate(incomesProvider);
             await ref.read(incomesProvider.future);
           },
@@ -44,8 +50,8 @@ class IncomeHistoryScreen extends ConsumerWidget {
                       'No income entries yet.\nUse Add income to record salary or other inflows.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.55),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
                     ),
                   ],
                 )
@@ -54,11 +60,14 @@ class IncomeHistoryScreen extends ConsumerWidget {
                   itemCount: list.length,
                   itemBuilder: (_, i) {
                     final row = list[i];
-                    final amt = double.tryParse(row['amount']?.toString() ?? '') ?? 0;
+                    final amt =
+                        double.tryParse(row['amount']?.toString() ?? '') ?? 0;
                     final src = row['source']?.toString() ?? '';
                     final date = row['date']?.toString().split('T').first ?? '';
                     final note = row['note']?.toString();
-                    final acc = row['account'] is Map ? Map<String, dynamic>.from(row['account'] as Map) : null;
+                    final acc = row['account'] is Map
+                        ? Map<String, dynamic>.from(row['account'] as Map)
+                        : null;
                     final accName = acc?['name']?.toString() ?? '';
                     final id = row['id']?.toString() ?? '';
                     return LedgerStaggerItem(
@@ -69,12 +78,18 @@ class IncomeHistoryScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(_sourceLabel(src), style: Theme.of(context).textTheme.titleSmall),
+                                Text(
+                                  _sourceLabel(src),
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '$date · $accName',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: cs.onSurface.withValues(alpha: 0.5),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: cs.onSurface.withValues(
+                                          alpha: 0.5,
+                                        ),
                                       ),
                                 ),
                                 if (note != null && note.isNotEmpty)
@@ -82,7 +97,9 @@ class IncomeHistoryScreen extends ConsumerWidget {
                                     padding: const EdgeInsets.only(top: 4),
                                     child: Text(
                                       note,
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -107,14 +124,18 @@ class IncomeHistoryScreen extends ConsumerWidget {
                                     context: context,
                                     builder: (ctx) => AlertDialog(
                                       title: const Text('Delete income?'),
-                                      content: const Text('This reverses the credit on the linked account.'),
+                                      content: const Text(
+                                        'This reverses the credit on the linked account.',
+                                      ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(ctx, false),
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
                                           child: const Text('Cancel'),
                                         ),
                                         FilledButton(
-                                          onPressed: () => Navigator.pop(ctx, true),
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
                                           child: const Text('Delete'),
                                         ),
                                       ],
@@ -122,19 +143,34 @@ class IncomeHistoryScreen extends ConsumerWidget {
                                   );
                                   if (ok != true || !context.mounted) return;
                                   try {
-                                    await ref.read(incomesApiProvider).delete(id);
+                                    await ref
+                                        .read(incomesApiProvider)
+                                        .delete(id);
+                                    await ref
+                                        .read(ledgerSyncServiceProvider)
+                                        .pullAndFlush();
                                     ref.invalidate(incomesProvider);
                                     ref.invalidate(accountsProvider);
                                     ref.invalidate(monthlySummaryProvider);
                                   } on DioException catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(dioErrorMessage(e))),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(dioErrorMessage(e)),
+                                        ),
                                       );
                                     }
                                   }
                                 },
-                                child: Text('Delete', style: TextStyle(color: cs.error, fontSize: 13)),
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    color: cs.error,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -145,7 +181,9 @@ class IncomeHistoryScreen extends ConsumerWidget {
                 ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(16), child: Text('$e'))),
+        error: (e, _) => Center(
+          child: Padding(padding: const EdgeInsets.all(16), child: Text('$e')),
+        ),
       ),
     );
   }

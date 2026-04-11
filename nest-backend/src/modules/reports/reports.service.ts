@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { AccountType, CategoryType } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
-import { assertWorkspacePermission } from '../workspaces/workspace-permissions';
-import { WorkspaceContext } from '../workspaces/workspace.types';
+import { Injectable } from "@nestjs/common";
+import { AccountType, CategoryType } from "@prisma/client";
+import { PrismaService } from "../../prisma/prisma.service";
+import { assertWorkspacePermission } from "../workspaces/workspace-permissions";
+import { WorkspaceContext } from "../workspaces/workspace.types";
 
 @Injectable()
 export class ReportsService {
@@ -14,7 +14,11 @@ export class ReportsService {
     return { start, end, label: `${now.getFullYear()}-${now.getMonth() + 1}` };
   }
 
-  private parseYearMonth(yearStr?: string, monthStr?: string, now = new Date()) {
+  private parseYearMonth(
+    yearStr?: string,
+    monthStr?: string,
+    now = new Date(),
+  ) {
     const y = yearStr ? Number(yearStr) : now.getFullYear();
     const m = monthStr ? Number(monthStr) : now.getMonth() + 1;
     if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
@@ -25,53 +29,76 @@ export class ReportsService {
     return { start, end, label: `${y}-${m}` };
   }
 
-  async monthlyIncomeReport(userId: string, yearStr?: string, monthStr?: string) {
+  async monthlyIncomeReport(
+    ctx: WorkspaceContext,
+    yearStr?: string,
+    monthStr?: string,
+  ) {
+    assertWorkspacePermission(ctx.role, "expense:read");
     const { start, end, label } = this.parseYearMonth(yearStr, monthStr);
-    const [rows, bySource] = await Promise.all([
-      this.prisma.income.findMany({
-        where: { userId, date: { gte: start, lt: end } },
-        include: { account: true },
-        orderBy: { date: 'desc' },
-      }),
-      this.prisma.income.groupBy({
-        by: ['source'],
-        where: { userId, date: { gte: start, lt: end } },
-        _sum: { amount: true },
-      }),
-    ]);
+    const rows = await this.prisma.income.findMany({
+      where: {
+        userId: ctx.ownerUserId,
+        date: { gte: start, lt: end },
+        account: { workspaceId: ctx.workspaceId },
+      },
+      include: { account: true },
+      orderBy: { date: "desc" },
+    });
     const totalIncome = rows.reduce((sum, row) => sum + Number(row.amount), 0);
+    const bySource = new Map<string, number>();
+    for (const row of rows) {
+      bySource.set(
+        row.source,
+        (bySource.get(row.source) ?? 0) + Number(row.amount),
+      );
+    }
     return {
       month: label,
       totalIncome: totalIncome.toFixed(2),
-      incomeBySource: bySource.map((r) => ({
-        source: r.source,
-        total: String(r._sum.amount ?? 0),
+      incomeBySource: [...bySource.entries()].map(([source, total]) => ({
+        source,
+        total: total.toFixed(2),
       })),
       entries: rows,
     };
   }
 
-  async monthlySummary(userId: string) {
+  async monthlySummary(ctx: WorkspaceContext) {
+    assertWorkspacePermission(ctx.role, "expense:read");
     const { start, end, label } = this.monthRange();
-    const [expenseRows, incomeRows, incomeBySource] = await Promise.all([
+    const [expenseRows, incomeRows] = await Promise.all([
       this.prisma.expense.findMany({
         where: {
-          userId,
+          userId: ctx.ownerUserId,
+          workspaceId: ctx.workspaceId,
           date: { gte: start, lt: end },
           category: { type: CategoryType.expense },
         },
       }),
       this.prisma.income.findMany({
-        where: { userId, date: { gte: start, lt: end } },
-      }),
-      this.prisma.income.groupBy({
-        by: ['source'],
-        where: { userId, date: { gte: start, lt: end } },
-        _sum: { amount: true },
+        where: {
+          userId: ctx.ownerUserId,
+          date: { gte: start, lt: end },
+          account: { workspaceId: ctx.workspaceId },
+        },
       }),
     ]);
-    const totalExpenses = expenseRows.reduce((sum, row) => sum + Number(row.amount), 0);
-    const totalIncome = incomeRows.reduce((sum, row) => sum + Number(row.amount), 0);
+    const totalExpenses = expenseRows.reduce(
+      (sum, row) => sum + Number(row.amount),
+      0,
+    );
+    const totalIncome = incomeRows.reduce(
+      (sum, row) => sum + Number(row.amount),
+      0,
+    );
+    const incomeBySource = new Map<string, number>();
+    for (const row of incomeRows) {
+      incomeBySource.set(
+        row.source,
+        (incomeBySource.get(row.source) ?? 0) + Number(row.amount),
+      );
+    }
     const net = totalIncome - totalExpenses;
     const netFixed = net.toFixed(2);
     return {
@@ -80,9 +107,9 @@ export class ReportsService {
       totalIncome: totalIncome.toFixed(2),
       netCashFlow: netFixed,
       netSavings: netFixed,
-      incomeBySource: incomeBySource.map((r) => ({
-        source: r.source,
-        total: String(r._sum.amount ?? 0),
+      incomeBySource: [...incomeBySource.entries()].map(([source, total]) => ({
+        source,
+        total: total.toFixed(2),
       })),
     };
   }
@@ -92,20 +119,30 @@ export class ReportsService {
   }
 
   /** Last `trendMonths` calendar months including current (max 24). */
-  async savingsTrend(userId: string, trendMonths = 6) {
+  async savingsTrend(ctx: WorkspaceContext, trendMonths = 6) {
+    assertWorkspacePermission(ctx.role, "expense:read");
     const months = Math.min(24, Math.max(1, Math.floor(trendMonths)));
     const now = new Date();
-    const rangeStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+    const rangeStart = new Date(
+      now.getFullYear(),
+      now.getMonth() - (months - 1),
+      1,
+    );
     const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     const [allIncomes, allExpenses] = await Promise.all([
       this.prisma.income.findMany({
-        where: { userId, date: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          userId: ctx.ownerUserId,
+          date: { gte: rangeStart, lt: rangeEnd },
+          account: { workspaceId: ctx.workspaceId },
+        },
         select: { amount: true, date: true },
       }),
       this.prisma.expense.findMany({
         where: {
-          userId,
+          userId: ctx.ownerUserId,
+          workspaceId: ctx.workspaceId,
           date: { gte: rangeStart, lt: rangeEnd },
           category: { type: CategoryType.expense },
         },
@@ -146,18 +183,19 @@ export class ReportsService {
     return series;
   }
 
-  async netWorth(userId: string) {
+  async netWorth(ctx: WorkspaceContext) {
+    assertWorkspacePermission(ctx.role, "account:read");
     const [accounts, invAgg, liabAgg] = await Promise.all([
       this.prisma.account.findMany({
-        where: { userId },
+        where: { userId: ctx.ownerUserId, workspaceId: ctx.workspaceId },
         select: { type: true, balance: true, name: true },
       }),
       this.prisma.investment.aggregate({
-        where: { userId },
+        where: { userId: ctx.ownerUserId },
         _sum: { currentValue: true },
       }),
       this.prisma.liability.aggregate({
-        where: { userId },
+        where: { userId: ctx.ownerUserId },
         _sum: { balance: true },
       }),
     ]);
@@ -182,11 +220,11 @@ export class ReportsService {
     };
   }
 
-  async dashboard(userId: string, trendMonths = 6) {
+  async dashboard(ctx: WorkspaceContext, trendMonths = 6) {
     const [thisMonth, trend, netWorthBreakdown] = await Promise.all([
-      this.monthlySummary(userId),
-      this.savingsTrend(userId, trendMonths),
-      this.netWorth(userId),
+      this.monthlySummary(ctx),
+      this.savingsTrend(ctx, trendMonths),
+      this.netWorth(ctx),
     ]);
     return {
       thisMonth,
@@ -195,21 +233,32 @@ export class ReportsService {
     };
   }
 
-  async categoryBreakdown(userId: string) {
-    const rows = await this.prisma.expense.groupBy({
-      by: ['categoryId'],
-      where: { userId, category: { type: CategoryType.expense } },
-      _sum: { amount: true },
+  async categoryBreakdown(ctx: WorkspaceContext) {
+    assertWorkspacePermission(ctx.role, "expense:read");
+    const rows = await this.prisma.expense.findMany({
+      where: {
+        userId: ctx.ownerUserId,
+        workspaceId: ctx.workspaceId,
+        category: { type: CategoryType.expense },
+      },
+      select: { categoryId: true, amount: true },
     });
-    return rows.map((r: { categoryId: string; _sum: { amount: unknown } }) => ({
-      categoryId: r.categoryId,
-      total: String(r._sum.amount ?? 0),
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      totals.set(
+        row.categoryId,
+        (totals.get(row.categoryId) ?? 0) + Number(row.amount),
+      );
+    }
+    return [...totals.entries()].map(([categoryId, total]) => ({
+      categoryId,
+      total: total.toFixed(2),
     }));
   }
 
   private schemeLabel(scheme: string) {
-    if (scheme === 'gst_in') return 'India GST';
-    if (scheme === 'vat_ae') return 'UAE VAT';
+    if (scheme === "gst_in") return "India GST";
+    if (scheme === "vat_ae") return "UAE VAT";
     return scheme;
   }
 
@@ -220,7 +269,7 @@ export class ReportsService {
     monthStr?: string,
     includeDetails = false,
   ) {
-    assertWorkspacePermission(ctx.role, 'expense:read');
+    assertWorkspacePermission(ctx.role, "expense:read");
     const { start, end, label } = this.parseYearMonth(yearStr, monthStr);
     const rows = await this.prisma.expense.findMany({
       where: {
@@ -231,12 +280,18 @@ export class ReportsService {
         category: { type: CategoryType.expense },
       },
       include: { category: { select: { name: true } } },
-      orderBy: { date: 'desc' },
+      orderBy: { date: "desc" },
     });
 
     const byScheme = new Map<
       string,
-      { scheme: string; label: string; count: number; totalExpense: number; totalTax: number }
+      {
+        scheme: string;
+        label: string;
+        count: number;
+        totalExpense: number;
+        totalTax: number;
+      }
     >();
     let totalExpense = 0;
     let totalTax = 0;
@@ -246,7 +301,7 @@ export class ReportsService {
       const t = Number(r.taxAmount ?? 0);
       totalExpense += a;
       totalTax += t;
-      const key = r.taxScheme ?? 'unknown';
+      const key = r.taxScheme ?? "unknown";
       if (!byScheme.has(key)) {
         byScheme.set(key, {
           scheme: key,

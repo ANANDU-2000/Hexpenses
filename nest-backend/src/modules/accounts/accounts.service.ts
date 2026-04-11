@@ -2,13 +2,19 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { AccountType, AuditAction, CategoryType, Prisma } from '@prisma/client';
-import { AuditEntity } from '../../audit/audit.types';
-import { AuditService } from '../../audit/audit.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { assertWorkspacePermission } from '../workspaces/workspace-permissions';
-import { WorkspaceContext } from '../workspaces/workspace.types';
+} from "@nestjs/common";
+import {
+  Account,
+  AccountType,
+  AuditAction,
+  CategoryType,
+  Prisma,
+} from "@prisma/client";
+import { AuditEntity } from "../../audit/audit.types";
+import { AuditService } from "../../audit/audit.service";
+import { PrismaService } from "../../prisma/prisma.service";
+import { assertWorkspacePermission } from "../workspaces/workspace-permissions";
+import { WorkspaceContext } from "../workspaces/workspace.types";
 
 type ExpenseBalanceRow = {
   accountId: string | null;
@@ -18,23 +24,54 @@ type ExpenseBalanceRow = {
 
 @Injectable()
 export class AccountsService {
+  private static readonly maxAbsMoneyValue = new Prisma.Decimal(
+    "9999999999.99",
+  );
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
 
+  /** Plain JSON shape (Prisma.Decimal is not JSON-serializable as a number). */
+  private accountToResponse(a: Account) {
+    return {
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      balance: a.balance.toFixed(2),
+      userId: a.userId,
+      workspaceId: a.workspaceId,
+      createdAt: a.createdAt.toISOString(),
+      updatedAt: a.updatedAt.toISOString(),
+    };
+  }
+
+  private validateMoneyInput(value: number, fieldName: string) {
+    if (!Number.isFinite(value)) {
+      throw new BadRequestException(`${fieldName} must be a valid number`);
+    }
+    const decimal = new Prisma.Decimal(value);
+    if (decimal.abs().greaterThan(AccountsService.maxAbsMoneyValue)) {
+      throw new BadRequestException(
+        `${fieldName} must be less than 10,000,000,000 in absolute value`,
+      );
+    }
+    return decimal;
+  }
+
   listForWorkspace(ctx: WorkspaceContext) {
-    assertWorkspacePermission(ctx.role, 'account:read');
+    assertWorkspacePermission(ctx.role, "account:read");
     const ledgerUserId = ctx.ownerUserId;
     return this.prisma.account.findMany({
       where: { userId: ledgerUserId, workspaceId: ctx.workspaceId },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
   /** Accounts plus rolled-up balances for the workspace ledger (bank + cash vs credit). */
   async ledgerOverview(ctx: WorkspaceContext) {
-    assertWorkspacePermission(ctx.role, 'account:read');
+    assertWorkspacePermission(ctx.role, "account:read");
     const accounts = await this.listForWorkspace(ctx);
     let bankAndCash = 0;
     let creditDebt = 0;
@@ -44,7 +81,7 @@ export class AccountsService {
       else bankAndCash += b;
     }
     return {
-      accounts,
+      accounts: accounts.map((a) => this.accountToResponse(a)),
       summary: {
         totalBankAndCash: bankAndCash.toFixed(2),
         totalCreditCardDebt: creditDebt.toFixed(2),
@@ -58,9 +95,12 @@ export class AccountsService {
     ctx: WorkspaceContext,
     dto: { name: string; type: AccountType; initialBalance?: number },
   ) {
-    assertWorkspacePermission(ctx.role, 'account:create');
+    assertWorkspacePermission(ctx.role, "account:create");
     const ledgerUserId = ctx.ownerUserId;
-    const bal = new Prisma.Decimal(dto.initialBalance ?? 0);
+    const bal = this.validateMoneyInput(
+      dto.initialBalance ?? 0,
+      "initialBalance",
+    );
     const row = await this.prisma.account.create({
       data: {
         userId: ledgerUserId,
@@ -82,29 +122,45 @@ export class AccountsService {
         initialBalance: dto.initialBalance ?? 0,
       },
     });
-    return row;
+    return this.accountToResponse(row);
   }
 
   async transferForWorkspace(
     ctx: WorkspaceContext,
-    dto: { fromAccountId: string; toAccountId: string; amount: number; note?: string },
+    dto: {
+      fromAccountId: string;
+      toAccountId: string;
+      amount: number;
+      note?: string;
+    },
   ) {
-    assertWorkspacePermission(ctx.role, 'account:transfer');
+    assertWorkspacePermission(ctx.role, "account:transfer");
     const ledgerUserId = ctx.ownerUserId;
     if (dto.fromAccountId === dto.toAccountId) {
-      throw new BadRequestException('Cannot transfer to the same account');
+      throw new BadRequestException("Cannot transfer to the same account");
     }
-    const amt = new Prisma.Decimal(dto.amount);
+    if (dto.amount <= 0) {
+      throw new BadRequestException("Transfer amount must be greater than 0");
+    }
+    const amt = this.validateMoneyInput(dto.amount, "amount");
     const transferId = await this.prisma.$transaction(async (tx) => {
       const from = await tx.account.findFirst({
-        where: { id: dto.fromAccountId, userId: ledgerUserId, workspaceId: ctx.workspaceId },
+        where: {
+          id: dto.fromAccountId,
+          userId: ledgerUserId,
+          workspaceId: ctx.workspaceId,
+        },
       });
       const to = await tx.account.findFirst({
-        where: { id: dto.toAccountId, userId: ledgerUserId, workspaceId: ctx.workspaceId },
+        where: {
+          id: dto.toAccountId,
+          userId: ledgerUserId,
+          workspaceId: ctx.workspaceId,
+        },
       });
-      if (!from || !to) throw new NotFoundException('Account not found');
+      if (!from || !to) throw new NotFoundException("Account not found");
       if (from.balance.lessThan(amt)) {
-        throw new BadRequestException('Insufficient balance in source account');
+        throw new BadRequestException("Insufficient balance in source account");
       }
       await tx.account.update({
         where: { id: from.id },
@@ -142,7 +198,10 @@ export class AccountsService {
   }
 
   /** Signed delta: income adds, expense subtracts. */
-  signedDeltaForCategory(type: CategoryType, amount: Prisma.Decimal): Prisma.Decimal {
+  signedDeltaForCategory(
+    type: CategoryType,
+    amount: Prisma.Decimal,
+  ): Prisma.Decimal {
     return type === CategoryType.income ? amount : amount.negated();
   }
 
@@ -152,21 +211,37 @@ export class AccountsService {
     accountId: string,
     delta: Prisma.Decimal,
   ) {
-    const acc = await tx.account.findFirst({ where: { id: accountId, userId } });
-    if (!acc) throw new BadRequestException('Account not found');
+    const acc = await tx.account.findFirst({
+      where: { id: accountId, userId },
+    });
+    if (!acc) throw new BadRequestException("Account not found");
     const next = acc.balance.plus(delta);
-    await tx.account.update({ where: { id: accountId }, data: { balance: next } });
+    await tx.account.update({
+      where: { id: accountId },
+      data: { balance: next },
+    });
   }
 
-  async applyExpenseCreatedTx(tx: Prisma.TransactionClient, userId: string, row: ExpenseBalanceRow) {
+  async applyExpenseCreatedTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    row: ExpenseBalanceRow,
+  ) {
     if (!row.accountId) return;
     const delta = this.signedDeltaForCategory(row.category.type, row.amount);
     await this.incrementBalanceTx(tx, userId, row.accountId, delta);
   }
 
-  async applyExpenseRemovedTx(tx: Prisma.TransactionClient, userId: string, row: ExpenseBalanceRow) {
+  async applyExpenseRemovedTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    row: ExpenseBalanceRow,
+  ) {
     if (!row.accountId) return;
-    const delta = this.signedDeltaForCategory(row.category.type, row.amount).negated();
+    const delta = this.signedDeltaForCategory(
+      row.category.type,
+      row.amount,
+    ).negated();
     await this.incrementBalanceTx(tx, userId, row.accountId, delta);
   }
 
@@ -183,6 +258,11 @@ export class AccountsService {
     userId: string,
     row: { accountId: string; amount: Prisma.Decimal },
   ) {
-    await this.incrementBalanceTx(tx, userId, row.accountId, row.amount.negated());
+    await this.incrementBalanceTx(
+      tx,
+      userId,
+      row.accountId,
+      row.amount.negated(),
+    );
   }
 }

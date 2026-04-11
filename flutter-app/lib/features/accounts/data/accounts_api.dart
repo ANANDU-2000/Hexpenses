@@ -33,7 +33,9 @@ class AccountsLedger {
     }
     if (resolved is List) {
       return AccountsLedger(
-        accounts: resolved.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+        accounts: resolved
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList(),
         summary: const {},
       );
     }
@@ -49,7 +51,8 @@ class AccountsApi {
 
   final Dio _dio;
 
-  Future<Response<dynamic>> rawLedgerResponse() => _dio.get<dynamic>('/accounts');
+  Future<Response<dynamic>> rawLedgerResponse() =>
+      _dio.get<dynamic>('/accounts');
 
   Future<AccountsLedger> fetchLedger() async {
     final res = await rawLedgerResponse();
@@ -63,11 +66,7 @@ class AccountsApi {
   }) async {
     final res = await _dio.post<dynamic>(
       '/accounts',
-      data: {
-        'name': name,
-        'type': type,
-        'initialBalance': ?initialBalance,
-      },
+      data: {'name': name, 'type': type, 'initialBalance': ?initialBalance},
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
@@ -91,4 +90,6 @@ class AccountsApi {
   }
 }
 
-final accountsApiProvider = Provider<AccountsApi>((ref) => AccountsApi(ref.watch(dioProvider)));
+final accountsApiProvider = Provider<AccountsApi>(
+  (ref) => AccountsApi(ref.watch(dioProvider)),
+);

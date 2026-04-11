@@ -37,14 +37,22 @@ class AccountsScreen extends ConsumerWidget {
         data: (ledger) {
           final list = ledger.accounts;
           final sum = ledger.summary;
-          final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 2);
-          if (list.isEmpty) {            return Center(
+          final fmt = NumberFormat.currency(
+            locale: 'en_IN',
+            symbol: '\u20B9',
+            decimalDigits: 2,
+          );
+          if (list.isEmpty) {
+            return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('No accounts yet', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'No accounts yet',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 16),
                     LedgerPrimaryGradientButton(
                       onPressed: () => _openAddAccount(context, ref),
@@ -70,7 +78,8 @@ class AccountsScreen extends ConsumerWidget {
                       children: [
                         Text(
                           'Workspace balances',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
                                 color: cs.onSurface.withValues(alpha: 0.6),
                               ),
                         ),
@@ -80,7 +89,13 @@ class AccountsScreen extends ConsumerWidget {
                             Expanded(
                               child: _BalanceMini(
                                 label: 'Bank & cash',
-                                value: fmt.format(double.tryParse(sum['totalBankAndCash']?.toString() ?? '0') ?? 0),
+                                value: fmt.format(
+                                  double.tryParse(
+                                        sum['totalBankAndCash']?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0,
+                                ),
                                 color: cs.onSurface,
                               ),
                             ),
@@ -88,7 +103,14 @@ class AccountsScreen extends ConsumerWidget {
                             Expanded(
                               child: _BalanceMini(
                                 label: 'Credit cards',
-                                value: fmt.format(double.tryParse(sum['totalCreditCardDebt']?.toString() ?? '0') ?? 0),
+                                value: fmt.format(
+                                  double.tryParse(
+                                        sum['totalCreditCardDebt']
+                                                ?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0,
+                                ),
                                 color: cs.error.withValues(alpha: 0.9),
                               ),
                             ),
@@ -96,7 +118,10 @@ class AccountsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: cs.primaryContainer.withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(12),
@@ -109,8 +134,17 @@ class AccountsScreen extends ConsumerWidget {
                                 style: Theme.of(context).textTheme.labelLarge,
                               ),
                               Text(
-                                fmt.format(double.tryParse(sum['netLiquid']?.toString() ?? '0') ?? 0),
-                                style: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 16, color: cs.primary),
+                                fmt.format(
+                                  double.tryParse(
+                                        sum['netLiquid']?.toString() ?? '0',
+                                      ) ??
+                                      0,
+                                ),
+                                style: GoogleFonts.manrope(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: cs.primary,
+                                ),
                               ),
                             ],
                           ),
@@ -120,7 +154,8 @@ class AccountsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                ...list.map((a) {                  final id = a['id']?.toString() ?? '';
+                ...list.map((a) {
+                  final id = a['id']?.toString() ?? '';
                   final name = a['name']?.toString() ?? '';
                   final type = a['type']?.toString() ?? '';
                   final bal = a['balance']?.toString() ?? '0';
@@ -134,12 +169,22 @@ class AccountsScreen extends ConsumerWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(name, style: Theme.of(context).textTheme.titleSmall),
+                                  Text(
+                                    name,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  ),
                                   const SizedBox(height: 4),
                                   Text(
                                     type.toUpperCase(),
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: cs.onSurface.withValues(alpha: 0.5),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: cs.onSurface.withValues(
+                                            alpha: 0.5,
+                                          ),
                                           letterSpacing: 0.8,
                                         ),
                                   ),
@@ -163,7 +208,10 @@ class AccountsScreen extends ConsumerWidget {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
-                                    builder: (_) => ExpenseListScreen(accountId: id, accountName: name),
+                                    builder: (_) => ExpenseListScreen(
+                                      accountId: id,
+                                      accountName: name,
+                                    ),
                                   ),
                                 );
                               },
@@ -180,7 +228,9 @@ class AccountsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(16), child: Text('$e'))),
+        error: (e, _) => Center(
+          child: Padding(padding: const EdgeInsets.all(16), child: Text('$e')),
+        ),
       ),
       floatingActionButton: LedgerFab(
         tooltip: 'Add account',
@@ -209,39 +259,76 @@ class AccountsScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('New account', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'New account',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 16),
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 key: ValueKey(type),
                 decoration: const InputDecoration(labelText: 'Type'),
                 initialValue: type,
-                items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                items: _types
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
                 onChanged: (v) => setSt(() => type = v ?? 'bank'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: initial,
-                decoration: const InputDecoration(labelText: 'Starting balance'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Starting balance',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 20),
               LedgerPrimaryGradientButton(
                 onPressed: () async {
                   if (name.text.trim().isEmpty) return;
-                  final ib = double.tryParse(initial.text.trim());
-                  try {
-                    await ref.read(accountsApiProvider).create(
-                      name: name.text.trim(),
-                      type: type,
-                      initialBalance: ib,
+                  final initialText = initial.text.trim().replaceAll(',', '');
+                  final ib = initialText.isEmpty
+                      ? 0.0
+                      : double.tryParse(initialText);
+                  if (ib == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter a valid starting balance'),
+                      ),
                     );
+                    return;
+                  }
+                  if (ib.abs() > 9999999999.99) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Starting balance must be below 10,000,000,000',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  try {
+                    await ref
+                        .read(accountsApiProvider)
+                        .create(
+                          name: name.text.trim(),
+                          type: type,
+                          initialBalance: ib,
+                        );
                     await ref.read(ledgerSyncServiceProvider).pullAndFlush();
                     if (context.mounted) Navigator.pop(context);
                   } on DioException catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(dioErrorMessage(e))),
+                      );
                     }
                   }
                 },
@@ -258,7 +345,9 @@ class AccountsScreen extends ConsumerWidget {
     final accounts = ref.read(accountsProvider).valueOrNull?.accounts ?? [];
     if (accounts.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create at least two accounts to transfer')),
+        const SnackBar(
+          content: Text('Create at least two accounts to transfer'),
+        ),
       );
       return;
     }
@@ -288,10 +377,12 @@ class AccountsScreen extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'From'),
                 initialValue: fromId,
                 items: accounts
-                    .map((a) => DropdownMenuItem(
-                          value: a['id']?.toString(),
-                          child: Text(a['name']?.toString() ?? ''),
-                        ))
+                    .map(
+                      (a) => DropdownMenuItem(
+                        value: a['id']?.toString(),
+                        child: Text(a['name']?.toString() ?? ''),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setSt(() => fromId = v),
               ),
@@ -301,10 +392,12 @@ class AccountsScreen extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'To'),
                 initialValue: toId,
                 items: accounts
-                    .map((a) => DropdownMenuItem(
-                          value: a['id']?.toString(),
-                          child: Text(a['name']?.toString() ?? ''),
-                        ))
+                    .map(
+                      (a) => DropdownMenuItem(
+                        value: a['id']?.toString(),
+                        child: Text(a['name']?.toString() ?? ''),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setSt(() => toId = v),
               ),
@@ -312,33 +405,50 @@ class AccountsScreen extends ConsumerWidget {
               TextField(
                 controller: amount,
                 decoration: const InputDecoration(labelText: 'Amount'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 12),
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (optional)')),
+              TextField(
+                controller: note,
+                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              ),
               const SizedBox(height: 20),
               LedgerPrimaryGradientButton(
                 onPressed: () async {
-                  final a = double.tryParse(amount.text.trim());
-                  if (fromId == null || toId == null || a == null || a <= 0) return;
+                  final a = double.tryParse(
+                    amount.text.trim().replaceAll(',', ''),
+                  );
+                  if (fromId == null || toId == null || a == null || a <= 0) {
+                    return;
+                  }
                   if (fromId == toId) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Choose different accounts')),
+                      const SnackBar(
+                        content: Text('Choose different accounts'),
+                      ),
                     );
                     return;
                   }
                   try {
-                    await ref.read(accountsApiProvider).transfer(
+                    await ref
+                        .read(accountsApiProvider)
+                        .transfer(
                           fromAccountId: fromId!,
                           toAccountId: toId!,
                           amount: a,
-                          note: note.text.trim().isEmpty ? null : note.text.trim(),
+                          note: note.text.trim().isEmpty
+                              ? null
+                              : note.text.trim(),
                         );
                     await ref.read(ledgerSyncServiceProvider).pullAndFlush();
                     if (context.mounted) Navigator.pop(context);
                   } on DioException catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(dioErrorMessage(e))),
+                      );
                     }
                   }
                 },
@@ -353,7 +463,11 @@ class AccountsScreen extends ConsumerWidget {
 }
 
 class _BalanceMini extends StatelessWidget {
-  const _BalanceMini({required this.label, required this.value, required this.color});
+  const _BalanceMini({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -364,7 +478,9 @@ class _BalanceMini extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -372,12 +488,18 @@ class _BalanceMini extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.65)),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color.withValues(alpha: 0.65),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13, color: color),
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: color,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

@@ -5,19 +5,26 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { AuditAction, CategoryType, ExpenseSource, ExpenseTaxScheme, Prisma } from '@prisma/client';
-import { AuditEntity } from '../../audit/audit.types';
-import { AuditService } from '../../audit/audit.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { WorkspaceContext } from '../workspaces/workspace.types';
-import { assertWorkspacePermission } from '../workspaces/workspace-permissions';
-import { AccountsService } from '../accounts/accounts.service';
-import { BudgetsService } from '../budgets/budgets.service';
-import { ExpensesRepository } from './expenses.repository';
-import { CreateExpenseDto } from './dto/create-expense.dto';
-import { ListExpenseDto } from './dto/list-expense.dto';
-import { UpdateExpenseDto } from './dto/update-expense.dto';
+} from "@nestjs/common";
+import {
+  AuditAction,
+  CategoryType,
+  ExpenseSource,
+  ExpenseTaxScheme,
+  Prisma,
+} from "@prisma/client";
+import { AuditEntity } from "../../audit/audit.types";
+import { AuditService } from "../../audit/audit.service";
+import { PrismaService } from "../../prisma/prisma.service";
+import { WorkspaceContext } from "../workspaces/workspace.types";
+import { assertWorkspacePermission } from "../workspaces/workspace-permissions";
+import { AccountsService } from "../accounts/accounts.service";
+import { BudgetsService } from "../budgets/budgets.service";
+import { serializeExpense } from "../../common/serialize-ledger";
+import { ExpensesRepository } from "./expenses.repository";
+import { CreateExpenseDto } from "./dto/create-expense.dto";
+import { ListExpenseDto } from "./dto/list-expense.dto";
+import { UpdateExpenseDto } from "./dto/update-expense.dto";
 
 @Injectable()
 export class ExpensesService {
@@ -37,17 +44,29 @@ export class ExpensesService {
     taxable: boolean | undefined,
     taxScheme: ExpenseTaxScheme | undefined,
     taxAmount: number | undefined,
-  ): { taxable: boolean; taxScheme: ExpenseTaxScheme | null; taxAmount: Prisma.Decimal | null } {
+  ): {
+    taxable: boolean;
+    taxScheme: ExpenseTaxScheme | null;
+    taxAmount: Prisma.Decimal | null;
+  } {
     if (!taxable) {
       return { taxable: false, taxScheme: null, taxAmount: null };
     }
     if (taxScheme == null || taxAmount == null) {
-      throw new BadRequestException('taxScheme and taxAmount are required when taxable is true.');
+      throw new BadRequestException(
+        "taxScheme and taxAmount are required when taxable is true.",
+      );
     }
     if (taxAmount < 0 || taxAmount > amount) {
-      throw new BadRequestException('taxAmount must be between 0 and the expense amount.');
+      throw new BadRequestException(
+        "taxAmount must be between 0 and the expense amount.",
+      );
     }
-    return { taxable: true, taxScheme, taxAmount: new Prisma.Decimal(taxAmount) };
+    return {
+      taxable: true,
+      taxScheme,
+      taxAmount: new Prisma.Decimal(taxAmount),
+    };
   }
 
   private async assertAccountInWorkspace(
@@ -59,7 +78,7 @@ export class ExpensesService {
     const acc = await this.prisma.account.findFirst({
       where: { id: accountId, userId: ledgerUserId, workspaceId },
     });
-    if (!acc) throw new BadRequestException('Account not in this workspace');
+    if (!acc) throw new BadRequestException("Account not in this workspace");
   }
 
   /** WhatsApp inbound: ledger owner userId; workspace from owner. */
@@ -75,7 +94,7 @@ export class ExpensesService {
   ) {
     const ws = await this.prisma.workspace.findFirst({
       where: { ownerUserId: userId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
     });
     return this.prisma.expense
       .create({
@@ -90,7 +109,12 @@ export class ExpensesService {
           workspaceId: ws?.id,
           enteredByUserId: userId,
         },
-        include: { category: true, subCategory: true, account: true },
+        include: {
+          category: true,
+          subCategory: true,
+          account: true,
+          enteredBy: { select: { id: true, name: true } },
+        },
       })
       .then((expense) => {
         this.audit.logAction({
@@ -105,21 +129,38 @@ export class ExpensesService {
             categoryId: expense.categoryId,
           },
         });
-        return expense;
+        return serializeExpense(expense);
       });
   }
 
   create(ctx: WorkspaceContext, dto: CreateExpenseDto) {
-    assertWorkspacePermission(ctx.role, 'expense:create');
+    assertWorkspacePermission(ctx.role, "expense:create");
     const ledgerUserId = ctx.ownerUserId;
-    this.logger.debug(`create expense ledger=${ledgerUserId} actor=${ctx.memberUserId}`);
-    return this.prisma.$transaction(async (tx) => {
-        await this.assertAccountInWorkspace(dto.accountId, ctx.workspaceId, ledgerUserId);
+    this.logger.debug(
+      `create expense ledger=${ledgerUserId} actor=${ctx.memberUserId}`,
+    );
+    return this.prisma
+      .$transaction(async (tx) => {
+        await this.assertAccountInWorkspace(
+          dto.accountId,
+          ctx.workspaceId,
+          ledgerUserId,
+        );
         const category = await tx.category.findFirst({
           where: { id: dto.categoryId, userId: ledgerUserId },
         });
-        if (!category) throw new BadRequestException('Invalid category');
-        const tax = this.normalizeTax(dto.amount, dto.taxable, dto.taxScheme, dto.taxAmount);
+        if (!category) throw new BadRequestException("Invalid category");
+        if (category.type !== CategoryType.expense) {
+          throw new BadRequestException(
+            "Selected category cannot be used for expenses",
+          );
+        }
+        const tax = this.normalizeTax(
+          dto.amount,
+          dto.taxable,
+          dto.taxScheme,
+          dto.taxAmount,
+        );
         const expense = await tx.expense.create({
           data: {
             userId: ledgerUserId,
@@ -167,14 +208,21 @@ export class ExpensesService {
           },
         });
         void this.budgets
-          .notifyIfBudgetExceededForExpense(ledgerUserId, ctx.workspaceId, expense.categoryId, expense.date)
-          .catch((e) => this.logger.warn(`budget push check: ${(e as Error).message}`));
-        return expense;
+          .notifyIfBudgetExceededForExpense(
+            ledgerUserId,
+            ctx.workspaceId,
+            expense.categoryId,
+            expense.date,
+          )
+          .catch((e) =>
+            this.logger.warn(`budget push check: ${(e as Error).message}`),
+          );
+        return serializeExpense(expense);
       });
   }
 
   async ledgerSummary(ctx: WorkspaceContext) {
-    assertWorkspacePermission(ctx.role, 'expense:read');
+    assertWorkspacePermission(ctx.role, "expense:read");
     const ledgerUserId = ctx.ownerUserId;
     const [expenseAgg, incomeAgg] = await Promise.all([
       this.prisma.expense.aggregate({
@@ -186,7 +234,10 @@ export class ExpensesService {
         _sum: { amount: true },
       }),
       this.prisma.income.aggregate({
-        where: { userId: ledgerUserId },
+        where: {
+          userId: ledgerUserId,
+          account: { workspaceId: ctx.workspaceId },
+        },
         _sum: { amount: true },
       }),
     ]);
@@ -201,171 +252,227 @@ export class ExpensesService {
   }
 
   findAll(ctx: WorkspaceContext, query: ListExpenseDto) {
-    assertWorkspacePermission(ctx.role, 'expense:read');
-    return this.repo.findManyForUser(ctx.ownerUserId, ctx.workspaceId, {
-      categoryId: query.categoryId,
-      subCategoryId: query.subCategoryId,
-      ...(query.accountId ? { accountId: query.accountId } : {}),
-      date: {
-        gte: query.startDate ? new Date(query.startDate) : undefined,
-        lte: query.endDate ? new Date(query.endDate) : undefined,
-      },
-    });
+    assertWorkspacePermission(ctx.role, "expense:read");
+    return this.repo
+      .findManyForUser(ctx.ownerUserId, ctx.workspaceId, {
+        categoryId: query.categoryId,
+        subCategoryId: query.subCategoryId,
+        ...(query.accountId ? { accountId: query.accountId } : {}),
+        date: {
+          gte: query.startDate ? new Date(query.startDate) : undefined,
+          lte: query.endDate ? new Date(query.endDate) : undefined,
+        },
+      })
+      .then((rows) => rows.map(serializeExpense));
   }
 
   async findOne(ctx: WorkspaceContext, id: string) {
-    assertWorkspacePermission(ctx.role, 'expense:read');
-    const row = await this.repo.findOneForUser(ctx.ownerUserId, ctx.workspaceId, id);
-    if (!row) throw new NotFoundException('Expense not found');
-    return row;
+    assertWorkspacePermission(ctx.role, "expense:read");
+    const row = await this.repo.findOneForUser(
+      ctx.ownerUserId,
+      ctx.workspaceId,
+      id,
+    );
+    if (!row) throw new NotFoundException("Expense not found");
+    return serializeExpense(row);
   }
 
   async update(ctx: WorkspaceContext, id: string, dto: UpdateExpenseDto) {
-    assertWorkspacePermission(ctx.role, 'expense:update');
+    assertWorkspacePermission(ctx.role, "expense:update");
     const ledgerUserId = ctx.ownerUserId;
     if (dto.accountId !== undefined) {
-      await this.assertAccountInWorkspace(dto.accountId, ctx.workspaceId, ledgerUserId);
+      await this.assertAccountInWorkspace(
+        dto.accountId,
+        ctx.workspaceId,
+        ledgerUserId,
+      );
     }
     return this.prisma
       .$transaction(async (tx) => {
-      const before = await tx.expense.findFirst({
-        where: { id, userId: ledgerUserId, workspaceId: ctx.workspaceId },
-        include: { category: true },
-      });
-      if (!before) throw new NotFoundException('Expense not found');
-      if (dto.categoryId) {
-        const cat = await tx.category.findFirst({
-          where: { id: dto.categoryId, userId: ledgerUserId },
+        const before = await tx.expense.findFirst({
+          where: { id, userId: ledgerUserId, workspaceId: ctx.workspaceId },
+          include: { category: true },
         });
-        if (!cat) throw new BadRequestException('Invalid category');
-      }
-      if (before.accountId) {
-        await this.accounts.applyExpenseRemovedTx(tx, ledgerUserId, {
-          accountId: before.accountId,
-          amount: before.amount,
-          category: before.category,
-        });
-      }
-      const effAmount = dto.amount !== undefined ? dto.amount : Number(before.amount);
-      let taxable = before.taxable;
-      if (dto.taxable === false) taxable = false;
-      else if (dto.taxable === true) taxable = true;
-      let taxScheme: ExpenseTaxScheme | null | undefined = before.taxScheme ?? undefined;
-      if (dto.taxScheme !== undefined) taxScheme = dto.taxScheme;
-      let taxAmount: number | undefined =
-        before.taxAmount != null ? Number(before.taxAmount) : undefined;
-      if (dto.taxAmount !== undefined) taxAmount = dto.taxAmount;
+        if (!before) throw new NotFoundException("Expense not found");
+        if (dto.categoryId) {
+          const cat = await tx.category.findFirst({
+            where: { id: dto.categoryId, userId: ledgerUserId },
+          });
+          if (!cat) throw new BadRequestException("Invalid category");
+          if (cat.type !== CategoryType.expense) {
+            throw new BadRequestException(
+              "Selected category cannot be used for expenses",
+            );
+          }
+        }
+        if (before.accountId) {
+          await this.accounts.applyExpenseRemovedTx(tx, ledgerUserId, {
+            accountId: before.accountId,
+            amount: before.amount,
+            category: before.category,
+          });
+        }
+        const effAmount =
+          dto.amount !== undefined ? dto.amount : Number(before.amount);
+        let taxable = before.taxable;
+        if (dto.taxable === false) taxable = false;
+        else if (dto.taxable === true) taxable = true;
+        let taxScheme: ExpenseTaxScheme | null | undefined =
+          before.taxScheme ?? undefined;
+        if (dto.taxScheme !== undefined) taxScheme = dto.taxScheme;
+        let taxAmount: number | undefined =
+          before.taxAmount != null ? Number(before.taxAmount) : undefined;
+        if (dto.taxAmount !== undefined) taxAmount = dto.taxAmount;
 
-      const tax = taxable
-        ? this.normalizeTax(
-            effAmount,
-            true,
-            taxScheme ?? undefined,
-            taxAmount,
-          )
-        : { taxable: false, taxScheme: null, taxAmount: null };
+        const tax = taxable
+          ? this.normalizeTax(
+              effAmount,
+              true,
+              taxScheme ?? undefined,
+              taxAmount,
+            )
+          : { taxable: false, taxScheme: null, taxAmount: null };
 
-      const data: Prisma.ExpenseUpdateInput = {};
-      if (dto.amount !== undefined) data.amount = dto.amount;
-      if (dto.categoryId !== undefined) data.category = { connect: { id: dto.categoryId } };
-      if (dto.subCategoryId !== undefined) {
-        data.subCategory = dto.subCategoryId
-          ? { connect: { id: dto.subCategoryId } }
-          : { disconnect: true };
-      }
-      if (dto.date !== undefined) data.date = new Date(dto.date);
-      if (dto.note !== undefined) data.note = dto.note;
-      if (dto.vehicleId !== undefined) {
-        data.vehicle = dto.vehicleId ? { connect: { id: dto.vehicleId } } : { disconnect: true };
-      }
-      if (dto.accountId !== undefined) {
-        data.account = dto.accountId ? { connect: { id: dto.accountId } } : { disconnect: true };
-      }
-      data.taxable = tax.taxable;
-      data.taxScheme = tax.taxScheme;
-      data.taxAmount = tax.taxAmount;
-      const after = await tx.expense.update({
-        where: { id },
-        data,
-        include: { category: true, subCategory: true, account: true, enteredBy: { select: { id: true, name: true } } },
-      });
-      if (after.accountId) {
-        await this.accounts.applyExpenseCreatedTx(tx, ledgerUserId, {
-          accountId: after.accountId,
-          amount: after.amount,
-          category: after.category,
-        });
-      }
-      return {
-        after,
-        beforeSnapshot: { amount: Number(before.amount), categoryId: before.categoryId },
-        beforeCategoryId: before.categoryId,
-        beforeDate: before.date,
-        dto,
-      };
-    })
-      .then(({ after, beforeSnapshot, beforeCategoryId, beforeDate, dto: patch }) => {
-        const changedFields = Object.entries(patch).filter(([, v]) => v !== undefined).map(([k]) => k);
-        this.audit.logAction({
-          userId: ctx.memberUserId,
-          action: AuditAction.UPDATE,
-          entity: AuditEntity.Expense,
-          entityId: after.id,
-          metadata: {
-            workspaceId: ctx.workspaceId,
-            ledgerUserId,
-            before: beforeSnapshot,
-            after: { amount: Number(after.amount), categoryId: after.categoryId, accountId: after.accountId },
-            changedFields,
+        const data: Prisma.ExpenseUpdateInput = {};
+        if (dto.amount !== undefined) data.amount = dto.amount;
+        if (dto.categoryId !== undefined)
+          data.category = { connect: { id: dto.categoryId } };
+        if (dto.subCategoryId !== undefined) {
+          data.subCategory = dto.subCategoryId
+            ? { connect: { id: dto.subCategoryId } }
+            : { disconnect: true };
+        }
+        if (dto.date !== undefined) data.date = new Date(dto.date);
+        if (dto.note !== undefined) data.note = dto.note;
+        if (dto.vehicleId !== undefined) {
+          data.vehicle = dto.vehicleId
+            ? { connect: { id: dto.vehicleId } }
+            : { disconnect: true };
+        }
+        if (dto.accountId !== undefined) {
+          data.account = dto.accountId
+            ? { connect: { id: dto.accountId } }
+            : { disconnect: true };
+        }
+        data.taxable = tax.taxable;
+        data.taxScheme = tax.taxScheme;
+        data.taxAmount = tax.taxAmount;
+        const after = await tx.expense.update({
+          where: { id },
+          data,
+          include: {
+            category: true,
+            subCategory: true,
+            account: true,
+            enteredBy: { select: { id: true, name: true } },
           },
         });
-        void this.budgets
-          .notifyIfBudgetExceededForExpense(ledgerUserId, ctx.workspaceId, after.categoryId, after.date)
-          .catch((e) => this.logger.warn(`budget push check: ${(e as Error).message}`));
-        if (beforeCategoryId !== after.categoryId || beforeDate.getTime() !== after.date.getTime()) {
+        if (after.accountId) {
+          await this.accounts.applyExpenseCreatedTx(tx, ledgerUserId, {
+            accountId: after.accountId,
+            amount: after.amount,
+            category: after.category,
+          });
+        }
+        return {
+          after,
+          beforeSnapshot: {
+            amount: Number(before.amount),
+            categoryId: before.categoryId,
+          },
+          beforeCategoryId: before.categoryId,
+          beforeDate: before.date,
+          dto,
+        };
+      })
+      .then(
+        ({
+          after,
+          beforeSnapshot,
+          beforeCategoryId,
+          beforeDate,
+          dto: patch,
+        }) => {
+          const changedFields = Object.entries(patch)
+            .filter(([, v]) => v !== undefined)
+            .map(([k]) => k);
+          this.audit.logAction({
+            userId: ctx.memberUserId,
+            action: AuditAction.UPDATE,
+            entity: AuditEntity.Expense,
+            entityId: after.id,
+            metadata: {
+              workspaceId: ctx.workspaceId,
+              ledgerUserId,
+              before: beforeSnapshot,
+              after: {
+                amount: Number(after.amount),
+                categoryId: after.categoryId,
+                accountId: after.accountId,
+              },
+              changedFields,
+            },
+          });
           void this.budgets
             .notifyIfBudgetExceededForExpense(
               ledgerUserId,
               ctx.workspaceId,
-              beforeCategoryId,
-              beforeDate,
+              after.categoryId,
+              after.date,
             )
-            .catch((e) => this.logger.warn(`budget push check: ${(e as Error).message}`));
-        }
-        return after;
-      });
+            .catch((e) =>
+              this.logger.warn(`budget push check: ${(e as Error).message}`),
+            );
+          if (
+            beforeCategoryId !== after.categoryId ||
+            beforeDate.getTime() !== after.date.getTime()
+          ) {
+            void this.budgets
+              .notifyIfBudgetExceededForExpense(
+                ledgerUserId,
+                ctx.workspaceId,
+                beforeCategoryId,
+                beforeDate,
+              )
+              .catch((e) =>
+                this.logger.warn(`budget push check: ${(e as Error).message}`),
+              );
+          }
+          return serializeExpense(after);
+        },
+      );
   }
 
   async remove(ctx: WorkspaceContext, id: string) {
-    assertWorkspacePermission(ctx.role, 'expense:delete');
+    assertWorkspacePermission(ctx.role, "expense:delete");
     const ledgerUserId = ctx.ownerUserId;
     return this.prisma
       .$transaction(async (tx) => {
-      const row = await tx.expense.findFirst({
-        where: { id, userId: ledgerUserId, workspaceId: ctx.workspaceId },
-        include: { category: true },
-      });
-      if (!row) throw new NotFoundException('Expense not found');
-      if (row.accountId) {
-        await this.accounts.applyExpenseRemovedTx(tx, ledgerUserId, {
-          accountId: row.accountId,
-          amount: row.amount,
-          category: row.category,
+        const row = await tx.expense.findFirst({
+          where: { id, userId: ledgerUserId, workspaceId: ctx.workspaceId },
+          include: { category: true },
         });
-      }
-      await tx.expense.delete({ where: { id } });
-      return {
-        entityId: id,
-        metadata: {
-          workspaceId: ctx.workspaceId,
-          ledgerUserId,
-          amount: Number(row.amount),
-          categoryId: row.categoryId,
-          accountId: row.accountId,
-          expenseDate: row.date,
-        },
-      };
-    })
+        if (!row) throw new NotFoundException("Expense not found");
+        if (row.accountId) {
+          await this.accounts.applyExpenseRemovedTx(tx, ledgerUserId, {
+            accountId: row.accountId,
+            amount: row.amount,
+            category: row.category,
+          });
+        }
+        await tx.expense.delete({ where: { id } });
+        return {
+          entityId: id,
+          metadata: {
+            workspaceId: ctx.workspaceId,
+            ledgerUserId,
+            amount: Number(row.amount),
+            categoryId: row.categoryId,
+            accountId: row.accountId,
+            expenseDate: row.date,
+          },
+        };
+      })
       .then(({ entityId, metadata }) => {
         this.audit.logAction({
           userId: ctx.memberUserId,
@@ -377,8 +484,15 @@ export class ExpensesService {
         const catId = metadata.categoryId as string;
         const expDate = metadata.expenseDate as Date;
         void this.budgets
-          .notifyIfBudgetExceededForExpense(ledgerUserId, ctx.workspaceId, catId, expDate)
-          .catch((e) => this.logger.warn(`budget push check: ${(e as Error).message}`));
+          .notifyIfBudgetExceededForExpense(
+            ledgerUserId,
+            ctx.workspaceId,
+            catId,
+            expDate,
+          )
+          .catch((e) =>
+            this.logger.warn(`budget push check: ${(e as Error).message}`),
+          );
         return { deleted: true };
       });
   }

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { serializeIncome } from '../../common/serialize-ledger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertWorkspacePermission } from '../workspaces/workspace-permissions';
 import { WorkspaceContext } from '../workspaces/workspace.types';
@@ -45,7 +46,7 @@ export class IncomesService {
         accountId: row.accountId,
         amount: row.amount,
       });
-      return row;
+      return serializeIncome(row);
     });
   }
 
@@ -61,14 +62,16 @@ export class IncomesService {
         ...(query.endDate ? { lte: new Date(query.endDate) } : {}),
       };
     }
-    return this.repo.findManyForWorkspace(ctx.ownerUserId, ctx.workspaceId, where);
+    return this.repo
+      .findManyForWorkspace(ctx.ownerUserId, ctx.workspaceId, where)
+      .then((rows) => rows.map(serializeIncome));
   }
 
   async findOne(ctx: WorkspaceContext, id: string) {
     assertWorkspacePermission(ctx.role, 'expense:read');
     const row = await this.repo.findOneForWorkspace(ctx.ownerUserId, ctx.workspaceId, id);
     if (!row) throw new NotFoundException('Income not found');
-    return row;
+    return serializeIncome(row);
   }
 
   async update(ctx: WorkspaceContext, id: string, dto: UpdateIncomeDto) {
@@ -101,7 +104,7 @@ export class IncomesService {
         accountId: after.accountId,
         amount: after.amount,
       });
-      return after;
+      return serializeIncome(after);
     });
   }
 

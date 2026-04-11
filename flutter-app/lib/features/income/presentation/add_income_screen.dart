@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/dio_errors.dart';
+import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/widgets/ledger_ui.dart';
 import '../../accounts/application/account_providers.dart';
 import '../../dashboard/application/dashboard_providers.dart';
@@ -53,31 +54,40 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
 
   Future<void> _save() async {
     if (_accountId == null || _accountId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick an account')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pick an account')));
       return;
     }
-    final amt = double.tryParse(_amount.text.trim());
+    final amt = double.tryParse(_amount.text.trim().replaceAll(',', ''));
     if (amt == null || amt <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Valid amount required')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Valid amount required')));
       return;
     }
     setState(() => _saving = true);
     try {
       final iso = _date.toUtc().toIso8601String();
-      await ref.read(incomesApiProvider).create(
+      await ref
+          .read(incomesApiProvider)
+          .create(
             amount: amt,
             source: _source,
             dateIso: iso,
             accountId: _accountId!,
             note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           );
+      await ref.read(ledgerSyncServiceProvider).pullAndFlush();
       ref.invalidate(incomesProvider);
       ref.invalidate(accountsProvider);
       ref.invalidate(monthlySummaryProvider);
       if (mounted) Navigator.of(context).pop();
     } on DioException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -107,14 +117,18 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Text(
                           'Add an account under Profile → Accounts first.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.error,
                               ),
                         ),
                       );
                     }
-                    final accVal = _accountId != null &&
-                            accounts.any((a) => a['id']?.toString() == _accountId)
+                    final accVal =
+                        _accountId != null &&
+                            accounts.any(
+                              (a) => a['id']?.toString() == _accountId,
+                            )
                         ? _accountId
                         : null;
                     return DropdownButtonFormField<String>(
@@ -156,7 +170,9 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                 TextField(
                   controller: _amount,
                   decoration: const InputDecoration(labelText: 'Amount'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Material(
@@ -166,7 +182,10 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                     onTap: _pickDate,
                     borderRadius: BorderRadius.circular(4),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -175,14 +194,23 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ),
-                          Icon(Icons.calendar_today_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: _note, decoration: const InputDecoration(labelText: 'Note (optional)')),
+                TextField(
+                  controller: _note,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optional)',
+                  ),
+                ),
               ],
             ),
           ),

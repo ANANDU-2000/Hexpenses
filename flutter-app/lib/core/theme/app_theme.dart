@@ -226,7 +226,8 @@ ThemeData _buildTheme(ColorScheme colorScheme, MoneyFlowThemeExtension mf) {
       }),
     ),
     snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
+      // Fixed avoids "floating SnackBar off screen" when a child route has a FAB and the shell has a bottom bar.
+      behavior: SnackBarBehavior.fixed,
       elevation: 0,
       backgroundColor: colorScheme.inverseSurface,
       contentTextStyle: GoogleFonts.inter(color: colorScheme.onInverseSurface),

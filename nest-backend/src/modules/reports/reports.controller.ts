@@ -1,63 +1,65 @@
-import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { WorkspaceContextGuard } from '../workspaces/workspace-context.guard';
-import { RequestWithWorkspace } from '../workspaces/workspace.types';
-import { ReportsService } from './reports.service';
+import { Controller, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { Response } from "express";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { WorkspaceContextGuard } from "../workspaces/workspace-context.guard";
+import { RequestWithWorkspace } from "../workspaces/workspace.types";
+import { ReportsService } from "./reports.service";
 
-@Controller('reports')
-@UseGuards(JwtAuthGuard)
+@Controller("reports")
+@UseGuards(JwtAuthGuard, WorkspaceContextGuard)
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
-  @Get('monthly-summary')
-  monthlySummary(@Req() req: { user: { userId: string } }) {
-    return this.reports.monthlySummary(req.user.userId);
+  @Get("monthly-summary")
+  monthlySummary(@Req() req: RequestWithWorkspace) {
+    return this.reports.monthlySummary(req.workspaceContext);
   }
 
   /** Calendar month income totals and by-source breakdown; optional `year` / `month` (1–12), defaults to now. */
-  @Get('monthly-income')
+  @Get("monthly-income")
   monthlyIncome(
-    @Req() req: { user: { userId: string } },
-    @Query('year') year?: string,
-    @Query('month') month?: string,
+    @Req() req: RequestWithWorkspace,
+    @Query("year") year?: string,
+    @Query("month") month?: string,
   ) {
-    return this.reports.monthlyIncomeReport(req.user.userId, year, month);
+    return this.reports.monthlyIncomeReport(req.workspaceContext, year, month);
   }
 
-  @Get('category-breakdown')
-  categoryBreakdown(@Req() req: { user: { userId: string } }) {
-    return this.reports.categoryBreakdown(req.user.userId);
+  @Get("category-breakdown")
+  categoryBreakdown(@Req() req: RequestWithWorkspace) {
+    return this.reports.categoryBreakdown(req.workspaceContext);
   }
 
   /** GST (India) / VAT (UAE) summary for taxable expenses in the current workspace and month. */
-  @Get('tax-summary')
-  @UseGuards(WorkspaceContextGuard)
+  @Get("tax-summary")
   taxSummary(
     @Req() req: RequestWithWorkspace,
-    @Query('year') year?: string,
-    @Query('month') month?: string,
-    @Query('details') details?: string,
+    @Query("year") year?: string,
+    @Query("month") month?: string,
+    @Query("details") details?: string,
   ) {
-    const d = details === '1' || details === 'true';
+    const d = details === "1" || details === "true";
     return this.reports.taxSummary(req.workspaceContext, year, month, d);
   }
 
   /** Overview: this month cash flow, net worth (accounts + investments − liabilities), multi-month trend for charts. */
-  @Get('dashboard')
+  @Get("dashboard")
   dashboard(
-    @Req() req: { user: { userId: string } },
-    @Query('trendMonths') trendMonths?: string,
+    @Req() req: RequestWithWorkspace,
+    @Query("trendMonths") trendMonths?: string,
   ) {
     const n = trendMonths ? Number(trendMonths) : 6;
-    return this.reports.dashboard(req.user.userId, Number.isFinite(n) ? n : 6);
+    return this.reports.dashboard(
+      req.workspaceContext,
+      Number.isFinite(n) ? n : 6,
+    );
   }
 
   @Get()
-  async legacyReport(@Req() req: { user: { userId: string } }) {
+  async legacyReport(@Req() req: RequestWithWorkspace) {
     const [summary, byCategory] = await Promise.all([
-      this.reports.monthlySummary(req.user.userId),
-      this.reports.categoryBreakdown(req.user.userId),
+      this.reports.monthlySummary(req.workspaceContext),
+      this.reports.categoryBreakdown(req.workspaceContext),
     ]);
     return {
       totals: {
@@ -69,18 +71,18 @@ export class ReportsController {
     };
   }
 
-  @Get('export')
-  exportCsv(
-    @Res() res: Response,
-    @Query('format') format = 'csv',
-  ) {
-    if (format === 'pdf') {
-      res.header('Content-Type', 'application/pdf');
-      res.send(Buffer.from('MoneyFlow PDF export placeholder'));
+  @Get("export")
+  exportCsv(@Res() res: Response, @Query("format") format = "csv") {
+    if (format === "pdf") {
+      res.header("Content-Type", "application/pdf");
+      res.send(Buffer.from("MoneyFlow PDF export placeholder"));
       return;
     }
-    res.header('Content-Type', 'text/csv');
-    res.header('Content-Disposition', 'attachment; filename="moneyflow_export.csv"');
-    res.send('Date,Type,Amount\n2026-01-01,expense,0');
+    res.header("Content-Type", "text/csv");
+    res.header(
+      "Content-Disposition",
+      'attachment; filename="moneyflow_export.csv"',
+    );
+    res.send("Date,Type,Amount\n2026-01-01,expense,0");
   }
 }

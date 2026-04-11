@@ -79,11 +79,7 @@ class LedgerSyncService {
     if (_pullInFlight) return;
     _pullInFlight = true;
     try {
-      await Future.wait([
-        _pullExpenses(),
-        _pullAccounts(),
-        _pullBudgets(),
-      ]);
+      await Future.wait([_pullExpenses(), _pullAccounts(), _pullBudgets()]);
       await flushOutbox();
     } finally {
       _pullInFlight = false;
@@ -104,12 +100,19 @@ class LedgerSyncService {
     }
   }
 
-  Future<void> _maybeFlagExpenseConflict(String id, Map<String, dynamic> serverRow) async {
-    final local = await (_db.select(_db.cachedExpenses)..where((t) => t.id.equals(id))).getSingleOrNull();
+  Future<void> _maybeFlagExpenseConflict(
+    String id,
+    Map<String, dynamic> serverRow,
+  ) async {
+    final local = await (_db.select(
+      _db.cachedExpenses,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (local == null) return;
     final st = LedgerSyncStatus.values[local.syncStatus];
     if (st != LedgerSyncStatus.pendingPush) return;
-    final serverAt = LedgerDatabase.parseServerIso(serverRow['updatedAt'] as String?);
+    final serverAt = LedgerDatabase.parseServerIso(
+      serverRow['updatedAt'] as String?,
+    );
     final base = local.lastKnownServerAt;
     if (serverAt != null && base != null && serverAt.isAfter(base)) {
       await _db.markExpenseConflict(id, serverRow);
@@ -194,7 +197,9 @@ class LedgerSyncService {
     final id = op.entityId;
     await _expensesApi.delete(id);
     await _db.transaction(() async {
-      await (_db.delete(_db.cachedExpenses)..where((t) => t.id.equals(id))).go();
+      await (_db.delete(
+        _db.cachedExpenses,
+      )..where((t) => t.id.equals(id))).go();
       await _db.removeOutbox(op.localId);
     });
   }
@@ -225,10 +230,7 @@ class LedgerSyncService {
       'id': tempId,
       'amount': amount.toString(),
       'categoryId': categoryId,
-      'category': {
-        'id': categoryId,
-        'name': categoryName ?? '',
-      },
+      'category': {'id': categoryId, 'name': categoryName ?? ''},
       if (accountId != null) 'account': {'id': accountId},
       'date': dateIso,
       'note': ?note,
@@ -237,14 +239,18 @@ class LedgerSyncService {
     };
     if (kNoApiMode) {
       final now = DateTime.now().toUtc();
-      await _db.into(_db.cachedExpenses).insert(
+      await _db
+          .into(_db.cachedExpenses)
+          .insert(
             CachedExpensesCompanion.insert(
               id: tempId,
               payloadJson: jsonEncode(payload),
               syncStatus: LedgerSyncStatus.synced.index,
               clientRevisionAt: now,
               lastKnownServerAt: const Value.absent(),
-              expenseSortDate: LedgerDatabase.expenseSortDateFromPayload(payload),
+              expenseSortDate: LedgerDatabase.expenseSortDateFromPayload(
+                payload,
+              ),
             ),
           );
       return;
@@ -273,15 +279,23 @@ class LedgerSyncService {
   Future<void> deleteExpenseOffline(String id) async {
     if (kNoApiMode) {
       await _db.transaction(() async {
-        await (_db.delete(_db.cachedExpenses)..where((t) => t.id.equals(id))).go();
-        await (_db.delete(_db.syncOutbox)..where((t) => t.entityId.equals(id))).go();
+        await (_db.delete(
+          _db.cachedExpenses,
+        )..where((t) => t.id.equals(id))).go();
+        await (_db.delete(
+          _db.syncOutbox,
+        )..where((t) => t.entityId.equals(id))).go();
       });
       return;
     }
     if (id.startsWith('local_')) {
       await _db.transaction(() async {
-        await (_db.delete(_db.cachedExpenses)..where((t) => t.id.equals(id))).go();
-        await (_db.delete(_db.syncOutbox)..where((t) => t.entityId.equals(id))).go();
+        await (_db.delete(
+          _db.cachedExpenses,
+        )..where((t) => t.id.equals(id))).go();
+        await (_db.delete(
+          _db.syncOutbox,
+        )..where((t) => t.entityId.equals(id))).go();
       });
       return;
     }

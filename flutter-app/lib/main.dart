@@ -8,7 +8,7 @@ import 'core/storage/token_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Avoid runtime fetch from fonts.gstatic.com when offline / blocked (web); falls back to bundled/system fonts.
+  // Use fonts from `assets/google_fonts/` (see pubspec) so web works when fonts.gstatic.com is blocked or slow.
   GoogleFonts.config.allowRuntimeFetching = false;
 
   final storage = await TokenStorage.create();

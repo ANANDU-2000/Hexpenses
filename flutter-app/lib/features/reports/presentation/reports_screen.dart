@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/widgets/ledger_ui.dart';
 import '../../dashboard/application/dashboard_providers.dart';
 
@@ -10,13 +11,13 @@ class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
   static List<Color> _sectionColors(ColorScheme cs) => [
-        cs.primary,
-        cs.primaryContainer,
-        cs.tertiary,
-        cs.secondary,
-        cs.error,
-        cs.inverseSurface,
-      ];
+    cs.primary,
+    cs.primaryContainer,
+    cs.tertiary,
+    cs.secondary,
+    cs.error,
+    cs.inverseSurface,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,7 +31,8 @@ class ReportsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Reports')),
       body: RefreshIndicator(
         color: cs.primary,
-               onRefresh: () async {
+        onRefresh: () async {
+          await ref.read(ledgerSyncServiceProvider).pullAndFlush();
           ref.invalidate(monthlySummaryProvider);
           ref.invalidate(dashboardOverviewProvider);
           ref.invalidate(categoryBreakdownProvider);
@@ -48,21 +50,36 @@ class ReportsScreen extends ConsumerWidget {
                     Text(
                       'This month',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.65),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _ReportStatRow(label: 'Income', value: m['totalIncome']?.toString() ?? '0', color: cs.tertiary),
+                    _ReportStatRow(
+                      label: 'Income',
+                      value: m['totalIncome']?.toString() ?? '0',
+                      color: cs.tertiary,
+                    ),
                     const SizedBox(height: 6),
-                    _ReportStatRow(label: 'Expenses', value: m['totalExpenses']?.toString() ?? '0', color: cs.error),
+                    _ReportStatRow(
+                      label: 'Expenses',
+                      value: m['totalExpenses']?.toString() ?? '0',
+                      color: cs.error,
+                    ),
                     const SizedBox(height: 10),
-                    _ReportStatRow(label: 'Cash flow', value: m['netCashFlow']?.toString() ?? '0', color: cs.primary),
+                    _ReportStatRow(
+                      label: 'Cash flow',
+                      value: m['netCashFlow']?.toString() ?? '0',
+                      color: cs.primary,
+                    ),
                     Text(
                       m['month']?.toString() ?? '',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 16),
-                    Text('Income by source', style: Theme.of(context).textTheme.titleSmall),
+                    Text(
+                      'Income by source',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                     const SizedBox(height: 8),
                     ..._incomeBySourceRows(context, m['incomeBySource']),
                   ],
@@ -81,8 +98,8 @@ class ReportsScreen extends ConsumerWidget {
                     Text(
                       'GST / VAT (this month)',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.65),
-                          ),
+                        color: cs.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                     Text(
                       t['period']?.toString() ?? '',
@@ -92,12 +109,19 @@ class ReportsScreen extends ConsumerWidget {
                     Builder(
                       builder: (ctx) {
                         final tot = t['totals'];
-                        final tm = tot is Map ? Map<String, dynamic>.from(tot) : <String, dynamic>{};
-                        final count = int.tryParse(tm['taxableExpenseCount']?.toString() ?? '0') ?? 0;
+                        final tm = tot is Map
+                            ? Map<String, dynamic>.from(tot)
+                            : <String, dynamic>{};
+                        final count =
+                            int.tryParse(
+                              tm['taxableExpenseCount']?.toString() ?? '0',
+                            ) ??
+                            0;
                         if (count == 0) {
                           return Text(
                             'No taxable expenses this month. Mark expenses when adding them.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
                                   color: cs.onSurface.withValues(alpha: 0.55),
                                 ),
                           );
@@ -107,7 +131,9 @@ class ReportsScreen extends ConsumerWidget {
                           children: [
                             _ReportStatRow(
                               label: 'Total expense (incl. tax)',
-                              value: tm['totalTaxableExpenseAmount']?.toString() ?? '0',
+                              value:
+                                  tm['totalTaxableExpenseAmount']?.toString() ??
+                                  '0',
                               color: cs.onSurface,
                             ),
                             const SizedBox(height: 6),
@@ -119,15 +145,22 @@ class ReportsScreen extends ConsumerWidget {
                             const SizedBox(height: 6),
                             _ReportStatRow(
                               label: 'Net (excl. tax)',
-                              value: tm['totalNetExcludingTax']?.toString() ?? '0',
+                              value:
+                                  tm['totalNetExcludingTax']?.toString() ?? '0',
                               color: cs.primary,
                             ),
                             const SizedBox(height: 12),
-                            Text('By regime', style: Theme.of(context).textTheme.titleSmall),
+                            Text(
+                              'By regime',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                             const SizedBox(height: 8),
                             ..._taxBySchemeRows(context, t['byScheme']),
                             const SizedBox(height: 12),
-                            Text('Taxable lines', style: Theme.of(context).textTheme.titleSmall),
+                            Text(
+                              'Taxable lines',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                             const SizedBox(height: 8),
                             ..._taxLineRows(context, t['lines']),
                           ],
@@ -138,20 +171,37 @@ class ReportsScreen extends ConsumerWidget {
                 ),
               ),
               loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Tax report: $e', style: TextStyle(color: cs.error)),
+              error: (e, _) =>
+                  Text('Tax report: $e', style: TextStyle(color: cs.error)),
             ),
             const SizedBox(height: 16),
             breakdown.when(
               data: (rows) {
-                if (rows.isEmpty) return Text('No data', style: Theme.of(context).textTheme.bodyLarge);
-                final sorted = [...rows]..sort((a, b) {
-                    final da = double.tryParse(a['total']?.toString() ?? '0') ?? 0;
-                    final db = double.tryParse(b['total']?.toString() ?? '0') ?? 0;
+                if (rows.isEmpty) {
+                  return Text(
+                    'No data',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  );
+                }
+                final sorted = [...rows]
+                  ..sort((a, b) {
+                    final da =
+                        double.tryParse(a['total']?.toString() ?? '0') ?? 0;
+                    final db =
+                        double.tryParse(b['total']?.toString() ?? '0') ?? 0;
                     return db.compareTo(da);
                   });
-                final values = sorted.take(6).map((e) => double.tryParse(e['total']?.toString() ?? '0') ?? 0).toList();
+                final values = sorted
+                    .take(6)
+                    .map(
+                      (e) =>
+                          double.tryParse(e['total']?.toString() ?? '0') ?? 0,
+                    )
+                    .toList();
                 final sum = values.fold<double>(0, (a, b) => a + b);
-                if (sum <= 0) return const Text('No spend data');
+                if (sum <= 0) {
+                  return const Text('No spend data');
+                }
                 final palette = _sectionColors(cs);
                 return LedgerSectionLayer(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
@@ -172,7 +222,9 @@ class ReportsScreen extends ConsumerWidget {
                             color: c,
                             titleStyle: GoogleFonts.inter(
                               fontSize: 11,
-                              color: c.computeLuminance() > 0.55 ? cs.onSurface : Colors.white,
+                              color: c.computeLuminance() > 0.55
+                                  ? cs.onSurface
+                                  : Colors.white,
                               fontWeight: FontWeight.w600,
                             ),
                           );
@@ -211,11 +263,20 @@ class ReportsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label, style: Theme.of(context).textTheme.bodyMedium),
-                  Text('Net $net', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Net $net',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
-            Text(tax, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, color: cs.tertiary)),
+            Text(
+              tax,
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                color: cs.tertiary,
+              ),
+            ),
           ],
         ),
       );
@@ -242,11 +303,21 @@ class ReportsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(cat, style: Theme.of(context).textTheme.bodySmall),
-                  Text('$date · $scheme', style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    '$date · $scheme',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),
-            Text(tax, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurface)),
+            Text(
+              tax,
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: cs.onSurface,
+              ),
+            ),
           ],
         ),
       );
@@ -254,22 +325,36 @@ class ReportsScreen extends ConsumerWidget {
   }
 
   static List<Widget> _incomeBySourceRows(BuildContext context, dynamic raw) {
-    if (raw is! List) return [Text('—', style: Theme.of(context).textTheme.bodySmall)];
+    if (raw is! List) {
+      return [Text('—', style: Theme.of(context).textTheme.bodySmall)];
+    }
     final cs = Theme.of(context).colorScheme;
     if (raw.isEmpty) {
-      return [Text('No income entries', style: Theme.of(context).textTheme.bodySmall)];
+      return [
+        Text('No income entries', style: Theme.of(context).textTheme.bodySmall),
+      ];
     }
     return raw.map<Widget>((row) {
       final map = row as Map;
       final src = map['source']?.toString() ?? '';
       final total = map['total']?.toString() ?? '0';
-      final label = src.isEmpty ? '—' : '${src[0].toUpperCase()}${src.substring(1)}';
+      final label = src.isEmpty
+          ? '—'
+          : '${src[0].toUpperCase()}${src.substring(1)}';
       return Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-            Text(total, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, color: cs.onSurface)),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            ),
+            Text(
+              total,
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+            ),
           ],
         ),
       );
@@ -278,7 +363,11 @@ class ReportsScreen extends ConsumerWidget {
 }
 
 class _ReportStatRow extends StatelessWidget {
-  const _ReportStatRow({required this.label, required this.value, required this.color});
+  const _ReportStatRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -288,8 +377,17 @@ class _ReportStatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-        Text(value, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 18, color: color)),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: color,
+          ),
+        ),
       ],
     );
   }

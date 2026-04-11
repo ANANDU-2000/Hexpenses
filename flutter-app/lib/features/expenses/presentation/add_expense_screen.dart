@@ -36,7 +36,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   void dispose() {
-       _amount.dispose();
+    _amount.dispose();
     _note.dispose();
     _taxAmount.dispose();
     super.dispose();
@@ -54,16 +54,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   Future<void> _save() async {
     if (_categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a category')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pick a category')));
       return;
     }
     if (_accountId == null || _accountId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick an account')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pick an account')));
       return;
     }
-    final amt = double.tryParse(_amount.text.trim());
+    final amt = double.tryParse(_amount.text.trim().replaceAll(',', ''));
     if (amt == null || amt <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Valid amount required')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Valid amount required')));
       return;
     }
     double? taxAmt;
@@ -71,7 +77,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       taxAmt = double.tryParse(_taxAmount.text.trim().replaceAll(',', ''));
       if (taxAmt == null || taxAmt < 0 || taxAmt > amt) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a valid tax amount (0 … expense amount)')),
+          const SnackBar(
+            content: Text('Enter a valid tax amount (0 … expense amount)'),
+          ),
         );
         return;
       }
@@ -79,7 +87,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     setState(() => _saving = true);
     try {
       final iso = _date.toUtc().toIso8601String();
-      final cats = ref.read(categoriesProvider).value ?? const <Map<String, dynamic>>[];
+      final cats =
+          ref.read(categoriesProvider).value ?? const <Map<String, dynamic>>[];
       String? catName;
       for (final c in cats) {
         if (c['id']?.toString() == _categoryId) {
@@ -87,7 +96,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           break;
         }
       }
-      await ref.read(ledgerSyncServiceProvider).createExpenseOffline(
+      await ref
+          .read(ledgerSyncServiceProvider)
+          .createExpenseOffline(
             amount: amt,
             categoryId: _categoryId!,
             categoryName: catName,
@@ -103,7 +114,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       if (mounted) Navigator.of(context).pop();
     } on DioException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(dioErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -121,13 +134,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       body: cats.when(
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('Create a category in the API or app first.'));
+            return const Center(
+              child: Text('Create a category in the API or app first.'),
+            );
           }
           Map<String, dynamic>? selected;
           for (final c in list) {
             if (c['id'] == _categoryId) selected = c;
           }
-          final subs = (selected?['subCategoryRows'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+          final subs =
+              (selected?['subCategoryRows'] as List<dynamic>?)
+                  ?.cast<Map<String, dynamic>>() ??
+              [];
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -145,27 +163,35 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Text(
                               'Add an account under Profile → Accounts first.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: Theme.of(context).colorScheme.error,
                                   ),
                             ),
                           );
                         }
-                        final accVal = _accountId != null &&
-                                accounts.any((a) => a['id']?.toString() == _accountId)
+                        final accVal =
+                            _accountId != null &&
+                                accounts.any(
+                                  (a) => a['id']?.toString() == _accountId,
+                                )
                             ? _accountId
                             : null;
                         return DropdownButtonFormField<String>(
                           key: ValueKey('acc-$accVal'),
-                          decoration: const InputDecoration(labelText: 'Account'),
+                          decoration: const InputDecoration(
+                            labelText: 'Account',
+                          ),
                           initialValue: accVal,
                           items: accounts
-                              .map((a) => DropdownMenuItem<String>(
-                                    value: a['id']?.toString(),
-                                    child: Text(
-                                      '${a['name']?.toString() ?? ''} (${a['balance']?.toString() ?? '0'})',
-                                    ),
-                                  ))
+                              .map(
+                                (a) => DropdownMenuItem<String>(
+                                  value: a['id']?.toString(),
+                                  child: Text(
+                                    '${a['name']?.toString() ?? ''} (${a['balance']?.toString() ?? '0'})',
+                                  ),
+                                ),
+                              )
                               .toList(),
                           onChanged: (v) => setState(() => _accountId = v),
                         );
@@ -179,10 +205,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       decoration: const InputDecoration(labelText: 'Category'),
                       initialValue: _categoryId,
                       items: list
-                          .map((c) => DropdownMenuItem<String>(
-                                value: c['id']?.toString(),
-                                child: Text(c['name']?.toString() ?? ''),
-                              ))
+                          .map(
+                            (c) => DropdownMenuItem<String>(
+                              value: c['id']?.toString(),
+                              child: Text(c['name']?.toString() ?? ''),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setState(() {
                         _categoryId = v;
@@ -193,14 +221,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String?>(
                         key: ValueKey('sub-$_subId'),
-                        decoration: const InputDecoration(labelText: 'Subcategory (optional)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Subcategory (optional)',
+                        ),
                         initialValue: _subId,
                         items: [
-                          const DropdownMenuItem<String?>(value: null, child: Text('None')),
-                          ...subs.map((s) => DropdownMenuItem<String?>(
-                                value: s['id']?.toString(),
-                                child: Text(s['name']?.toString() ?? ''),
-                              )),
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('None'),
+                          ),
+                          ...subs.map(
+                            (s) => DropdownMenuItem<String?>(
+                              value: s['id']?.toString(),
+                              child: Text(s['name']?.toString() ?? ''),
+                            ),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _subId = v),
                       ),
@@ -209,17 +244,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     TextField(
                       controller: _amount,
                       decoration: const InputDecoration(labelText: 'Amount'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Material(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(4),
                       child: InkWell(
                         onTap: _pickDate,
                         borderRadius: BorderRadius.circular(4),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           child: Row(
                             children: [
                               Expanded(
@@ -228,19 +270,28 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                               ),
-                              Icon(Icons.calendar_today_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ],
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(controller: _note, decoration: const InputDecoration(labelText: 'Note')),
+                    TextField(
+                      controller: _note,
+                      decoration: const InputDecoration(labelText: 'Note'),
+                    ),
                     const SizedBox(height: 16),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Taxable (GST / VAT)'),
-                      subtitle: const Text('Track tax included in this expense'),
+                      subtitle: const Text(
+                        'Track tax included in this expense',
+                      ),
                       value: _taxable,
                       onChanged: (v) => setState(() => _taxable = v),
                     ),
@@ -249,20 +300,32 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       DropdownButtonFormField<String>(
                         key: ValueKey(_taxScheme),
                         initialValue: _taxScheme,
-                        decoration: const InputDecoration(labelText: 'Tax type'),
+                        decoration: const InputDecoration(
+                          labelText: 'Tax type',
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'gst_in', child: Text('India GST')),
-                          DropdownMenuItem(value: 'vat_ae', child: Text('UAE VAT')),
+                          DropdownMenuItem(
+                            value: 'gst_in',
+                            child: Text('India GST'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'vat_ae',
+                            child: Text('UAE VAT'),
+                          ),
                         ],
-                        onChanged: (v) => setState(() => _taxScheme = v ?? 'gst_in'),
+                        onChanged: (v) =>
+                            setState(() => _taxScheme = v ?? 'gst_in'),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _taxAmount,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Tax amount',
-                          helperText: 'GST or VAT portion included in the amount above',
+                          helperText:
+                              'GST or VAT portion included in the amount above',
                         ),
                       ),
                     ],
