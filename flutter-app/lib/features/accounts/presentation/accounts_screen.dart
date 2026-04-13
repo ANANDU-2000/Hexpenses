@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/design_system/app_button.dart';
-import '../../../core/design_system/app_card.dart';
 import '../../../core/design_system/premium_fab.dart';
 import '../../../core/dio_errors.dart';
 import '../../../core/navigation/ledger_page_routes.dart';
@@ -12,8 +11,6 @@ import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/theme/money_flow_tokens.dart';
 import '../../../core/widgets/ledger_async_states.dart';
 import '../../../core/widgets/ledger_ui.dart';
-import '../../../core/widgets/premium_fintech_app_bar.dart';
-import '../../../core/widgets/premium_fintech_backdrop.dart';
 import '../../expenses/presentation/expense_list_screen.dart';
 import '../application/account_providers.dart';
 import '../data/accounts_api.dart';
@@ -74,10 +71,20 @@ class AccountsScreen extends ConsumerWidget {
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.transparent,
-      appBar: PremiumFintechAppBar.bar(
-        context: context,
-        title: 'Accounts',
+      backgroundColor: const Color(0xFF0B1220),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1220),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Accounts',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.swap_horiz_rounded),
@@ -86,96 +93,90 @@ class AccountsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const PremiumFintechBackdrop(),
-          async.when(
-            data: (ledger) {
-              final list = ledger.accounts;
-              if (list.isEmpty) {
-                return RefreshIndicator(
-                  color: MfPalette.neonGreen,
-                  backgroundColor: cs.surfaceContainerHigh,
-                  onRefresh: () async {
-                    await ref.read(ledgerSyncServiceProvider).pullAndFlush();
-                  },
-                  child: _AccountsEmptyBody(
-                    onAddAccount: () => _openAddAccount(context, ref),
-                  ),
-                );
-              }
-              final total = _totalBalance(list);
-              return RefreshIndicator(
-                color: MfPalette.neonGreen,
-                backgroundColor: cs.surfaceContainerHigh,
-                onRefresh: () async {
-                  await ref.read(ledgerSyncServiceProvider).pullAndFlush();
-                },
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        MfSpace.xxl,
-                        MfSpace.sm,
-                        MfSpace.xxl,
-                        MediaQuery.paddingOf(context).bottom + 100,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _TotalBalanceHero(totalFormatted: MfCurrency.formatInr(total)),
-                          const SizedBox(height: MfSpace.xl),
-                          Text(
-                            'Your accounts',
-                            style: GoogleFonts.manrope(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: cs.onSurface.withValues(alpha: 0.72),
-                            ),
-                          ),
-                          const SizedBox(height: MfSpace.md),
-                          ...list.map(
-                            (a) => Padding(
-                              padding: const EdgeInsets.only(bottom: MfSpace.md),
-                              child: _AccountTile(
-                                account: a,
-                                onOpenTransactions: () {
-                                  final id = a['id']?.toString() ?? '';
-                                  final name = a['name']?.toString() ?? 'Account';
-                                  Navigator.of(context).push(
-                                    LedgerPageRoutes.fadeSlide<void>(
-                                      ExpenseListScreen(
-                                        accountId: id,
-                                        accountName: name,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const _AccountsLoadingBody(),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(MfSpace.xxl),
-              child: LedgerErrorState(
-                title: 'Could not load accounts',
-                message: e is DioException ? dioErrorMessage(e) : e.toString(),
-                onRetry: () {
-                  ref.invalidate(accountsProvider);
-                  ref.read(ledgerSyncServiceProvider).pullAndFlush();
-                },
+      body: async.when(
+        data: (ledger) {
+          final list = ledger.accounts;
+          if (list.isEmpty) {
+            return RefreshIndicator(
+              color: MfPalette.neonGreen,
+              backgroundColor: cs.surfaceContainerHigh,
+              onRefresh: () async {
+                await ref.read(ledgerSyncServiceProvider).pullAndFlush();
+              },
+              child: _AccountsEmptyBody(
+                onAddAccount: () => _openAddAccount(context, ref),
               ),
+            );
+          }
+          final total = _totalBalance(list);
+          return RefreshIndicator(
+            color: MfPalette.neonGreen,
+            backgroundColor: const Color(0xFF121A2B),
+            onRefresh: () async {
+              await ref.read(ledgerSyncServiceProvider).pullAndFlush();
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    MfSpace.lg,
+                    MfSpace.sm,
+                    MfSpace.lg,
+                    MediaQuery.paddingOf(context).bottom + 100,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _TotalBalanceHero(totalFormatted: MfCurrency.formatInr(total)),
+                      const SizedBox(height: MfSpace.lg),
+                      Text(
+                        'Your accounts',
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: cs.onSurface.withValues(alpha: 0.78),
+                        ),
+                      ),
+                      const SizedBox(height: MfSpace.md),
+                      ...list.map(
+                        (a) => Padding(
+                          padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                          child: _AccountTile(
+                            account: a,
+                            onOpenTransactions: () {
+                              final id = a['id']?.toString() ?? '';
+                              final name = a['name']?.toString() ?? 'Account';
+                              Navigator.of(context).push(
+                                LedgerPageRoutes.fadeSlide<void>(
+                                  ExpenseListScreen(
+                                    accountId: id,
+                                    accountName: name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
             ),
+          );
+        },
+        loading: () => const _AccountsLoadingBody(),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(MfSpace.xxl),
+          child: LedgerErrorState(
+            title: 'Could not load accounts',
+            message: e is DioException ? dioErrorMessage(e) : e.toString(),
+            onRetry: () {
+              ref.invalidate(accountsProvider);
+              ref.read(ledgerSyncServiceProvider).pullAndFlush();
+            },
           ),
-        ],
+        ),
       ),
       floatingActionButton: MoneyFlowPremiumExtendedFab(
         heroTag: 'accounts_add_fab',
@@ -417,9 +418,19 @@ class _TotalBalanceHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: MfSpace.xl,
-        vertical: MfSpace.xl,
+        vertical: MfSpace.lg,
       ),
-      decoration: heroCardDecoration(),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1A2556),
+            const Color(0xFF233C9C),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -468,33 +479,37 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final kind = _kindForAccount(account);
     final bankName = account['name']?.toString() ?? 'Account';
     final bal = account['balance'];
 
-    return AppCard(
-      glass: true,
-      onTap: onOpenTransactions,
-      padding: const EdgeInsets.all(MfSpace.lg),
-      child: Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpenTransactions,
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(MfSpace.md),
+          decoration: BoxDecoration(
+            color: const Color(0xFF121A2B),
+            borderRadius: BorderRadius.circular(MfRadius.lg),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(MfRadius.md),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  MfPalette.accentSoftPurple.withValues(alpha: 0.55),
-                  MfPalette.neonGreen.withValues(alpha: 0.22),
-                ],
-              ),
+              color: Colors.white.withValues(alpha: 0.08),
             ),
-            child: Icon(kind.icon, color: Colors.white.withValues(alpha: 0.95), size: 26),
+            child: Icon(
+              kind.icon,
+              color: Colors.white.withValues(alpha: 0.92),
+              size: 22,
+            ),
           ),
           const SizedBox(width: MfSpace.md),
           Expanded(
@@ -505,70 +520,47 @@ class _AccountTile extends StatelessWidget {
                   bankName,
                   style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: cs.onSurface,
+                    fontSize: 15,
+                    color: Colors.white.withValues(alpha: 0.94),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: MfSpace.xs),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: MfSpace.sm,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: MfPalette.neonGreen.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: MfPalette.neonGreen.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Text(
-                        kind.label,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface.withValues(alpha: 0.88),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: MfSpace.sm),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: cs.onSurface.withValues(alpha: 0.35),
-                    ),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        'Transactions',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: cs.onSurface.withValues(alpha: 0.45),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  kind.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.58),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: MfSpace.sm),
-          Text(
-            MfCurrency.formatInr(bal),
-            style: GoogleFonts.manrope(
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
-              color: cs.onSurface,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                MfCurrency.formatInr(bal),
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Colors.white.withValues(alpha: 0.98),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Colors.white.withValues(alpha: 0.35),
+              ),
+            ],
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -590,7 +582,7 @@ class _AccountsEmptyBody extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               MfSpace.xxl,
-              MfSpace.xxxl,
+              MfSpace.xxl,
               MfSpace.xxl,
               MediaQuery.paddingOf(context).bottom + 100,
             ),
@@ -619,11 +611,13 @@ class _AccountsEmptyBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: MfSpace.xl),
-                AppButton(
-                  label: 'Add account',
-                  icon: Icons.add_rounded,
-                  onPressed: onAddAccount,
-                  expand: false,
+                Center(
+                  child: AppButton(
+                    label: 'Add account',
+                    icon: Icons.add_rounded,
+                    onPressed: onAddAccount,
+                    expand: false,
+                  ),
                 ),
               ],
             ),
@@ -642,9 +636,9 @@ class _AccountsLoadingBody extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        MfSpace.xxl,
+        MfSpace.lg,
         MfSpace.md,
-        MfSpace.xxl,
+        MfSpace.lg,
         MediaQuery.paddingOf(context).bottom + 88,
       ),
       children: [

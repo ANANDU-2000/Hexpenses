@@ -38,8 +38,7 @@ abstract final class _DashboardColors {
 
 double? _tryDouble(dynamic raw) {
   if (raw is num) return raw.toDouble();
-  if (raw == null) return null;
-  return double.tryParse(raw.toString().replaceAll(',', ''));
+  return double.tryParse((raw?.toString() ?? '0').replaceAll(',', ''));
 }
 
 double _toDouble(dynamic raw) => _tryDouble(raw) ?? 0;

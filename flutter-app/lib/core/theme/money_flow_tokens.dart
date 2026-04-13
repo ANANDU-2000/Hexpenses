@@ -51,10 +51,10 @@ abstract final class MfPalette {
   static const Color neonGreenSoft = Color(0xFFF3FD6F);
   static const Color onNeonGreen = Color(0xFF0D0D0D);
 
-  // Semantic
-  static const Color incomeGreen = Color(0xFF10997A);
-  static const Color expenseRed = Color(0xFFD06B5E);
-  static const Color warningAmber = Color(0xFFE6A93D);
+  // Semantic (master design spec)
+  static const Color incomeGreen = Color(0xFF22C697);
+  static const Color expenseRed = Color(0xFFF07070);
+  static const Color warningAmber = Color(0xFFF4A83A);
   static const Color insightBlue = Color(0xFF4B79F8);
 
   // Hero card gradient stops

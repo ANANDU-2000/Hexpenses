@@ -47,7 +47,27 @@ async function ensureDemoWorkspace(userId: string, userName: string) {
   return ws;
 }
 
+const ADMIN_EMAIL = 'admin@money.com';
+const ADMIN_PASSWORD = 'Money@hexastack26';
+
+async function ensureAdminUser() {
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await prisma.admin.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: { passwordHash, name: 'MoneyFlow Admin' },
+    create: {
+      email: ADMIN_EMAIL,
+      passwordHash,
+      name: 'MoneyFlow Admin',
+    },
+  });
+  // eslint-disable-next-line no-console
+  console.log(`Admin panel login: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+}
+
 async function main() {
+  await ensureAdminUser();
+
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
   const user = await prisma.user.upsert({

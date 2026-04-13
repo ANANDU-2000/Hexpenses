@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/api_config.dart';
 import '../../../core/application/theme_mode_provider.dart';
 import '../../../core/design_system/neon_glass_card.dart';
 import '../../../core/navigation/ledger_page_routes.dart';
@@ -20,6 +21,7 @@ import '../../send_money/presentation/send_money_screen.dart';
 import '../../vehicles/presentation/vehicles_screen.dart';
 import '../../whatsapp/presentation/whatsapp_connect_screen.dart';
 import '../../insights/presentation/insights_screen.dart';
+import '../../onboarding/presentation/demo_get_started_screen.dart';
 
 /// Profile & settings hub (formerly "More").
 class ProfileScreen extends ConsumerWidget {
@@ -119,6 +121,19 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: MfSpace.lg),
+          if (kNoApiMode) ...[
+            _section(context, 'Demo', [
+              _tile(
+                context,
+                Icons.school_outlined,
+                'Get started',
+                'Tips for exploring sample data',
+                MfPalette.neonGreen,
+                () => openDemoGetStartedFromProfile(context),
+              ),
+            ]),
+            const SizedBox(height: MfSpace.lg),
+          ],
           _section(context, 'AI', [
             _tile(
               context,

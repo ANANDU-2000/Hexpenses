@@ -4,15 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/design_system/app_card.dart';
 import '../../../core/design_system/premium_fab.dart';
 import '../../../core/dio_errors.dart';
 import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/theme/money_flow_tokens.dart';
 import '../../../core/widgets/ledger_async_states.dart';
 import '../../../core/widgets/ledger_ui.dart';
-import '../../../core/widgets/premium_fintech_app_bar.dart';
-import '../../../core/widgets/premium_fintech_backdrop.dart';
 import '../../expenses/application/expense_providers.dart';
 import '../application/budget_providers.dart';
 import '../data/budgets_api.dart';
@@ -235,7 +232,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
         }
       },
       loading: () async {},
-      error: (_, _) async {},
+      error: (Object? e, StackTrace st) async {},
     );
   }
 
@@ -395,128 +392,106 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.transparent,
-      appBar: PremiumFintechAppBar.bar(
-        context: context,
-        title: 'Budgets',
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: MfSpace.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded),
-                  color: MfPalette.textPrimary,
-                  onPressed: () => _shiftMonth(-1),
-                  tooltip: 'Previous month',
-                ),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 160),
-                  child: Text(
-                    _prettyMonthLabel(_monthKey),
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: MfPalette.textPrimary,
-                    ),
+      backgroundColor: const Color(0xFF0B1220),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1220),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: MfSpace.xxl,
+        title: Text(
+          'Budgets',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.3,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
+        actions: [
+          _MonthSelector(
+            monthLabel: _prettyMonthLabel(_monthKey),
+            onPrevious: () => _shiftMonth(-1),
+            onNext: () => _shiftMonth(1),
+          ),
+          const SizedBox(width: MfSpace.lg),
+        ],
+      ),
+      body: RefreshIndicator(
+        color: MfPalette.neonGreen,
+        backgroundColor: const Color(0xFF121A2B),
+        onRefresh: _pull,
+        child: async.when(
+          data: (rows) {
+            if (rows.isEmpty) {
+              return CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _BudgetEmptyBody(onAdd: _openAdd),
+                  ),
+                ],
+              );
+            }
+            final overview = _computeOverview(rows);
+            final overallPct = overview.totalLimit > 0
+                ? (overview.totalSpent / overview.totalLimit).clamp(0.0, 1.0)
+                : 0.0;
+
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    MfSpace.xxl,
+                    MfSpace.md,
+                    MfSpace.xxl,
+                    MediaQuery.paddingOf(context).bottom + 100,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _MonthlyOverviewCard(
+                        overview: overview,
+                        overallProgress: overallPct,
+                        exceeded:
+                            overview.totalSpent > overview.totalLimit &&
+                            overview.totalLimit > 0,
+                      ),
+                      const SizedBox(height: MfSpace.xl),
+                      Text(
+                        'By category',
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: cs.onSurface.withValues(alpha: 0.78),
+                        ),
+                      ),
+                      const SizedBox(height: MfSpace.md),
+                      ...rows.map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: MfSpace.md),
+                          child: _CategoryBudgetCard(
+                            row: r,
+                            onTap: () => _openEdit(r),
+                          ),
+                        ),
+                      ),
+                    ]),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded),
-                  color: MfPalette.textPrimary,
-                  onPressed: () => _shiftMonth(1),
-                  tooltip: 'Next month',
-                ),
               ],
+            );
+          },
+          loading: () => const _BudgetLoadingBody(),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.all(MfSpace.xxl),
+            child: LedgerErrorState(
+              title: 'Could not load budgets',
+              message: e is DioException ? dioErrorMessage(e) : e.toString(),
+              onRetry: _pull,
             ),
           ),
         ),
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const PremiumFintechBackdrop(),
-          RefreshIndicator(
-            color: MfPalette.neonGreen,
-            backgroundColor: cs.surfaceContainerHigh,
-            onRefresh: _pull,
-            child: async.when(
-              data: (rows) {
-                if (rows.isEmpty) {
-                  return CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _BudgetEmptyBody(onAdd: _openAdd),
-                      ),
-                    ],
-                  );
-                }
-                final overview = _computeOverview(rows);
-                final overallPct = overview.totalLimit > 0
-                    ? (overview.totalSpent / overview.totalLimit).clamp(0.0, 1.0)
-                    : 0.0;
-
-                return CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        MfSpace.xxl,
-                        MfSpace.sm,
-                        MfSpace.xxl,
-                        MediaQuery.paddingOf(context).bottom + 100,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _MonthlyOverviewCard(
-                            overview: overview,
-                            overallProgress: overallPct,
-                            exceeded: overview.totalSpent > overview.totalLimit &&
-                                overview.totalLimit > 0,
-                          ),
-                          const SizedBox(height: MfSpace.xl),
-                          Text(
-                            'By category',
-                            style: GoogleFonts.manrope(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: cs.onSurface.withValues(alpha: 0.72),
-                            ),
-                          ),
-                          const SizedBox(height: MfSpace.md),
-                          ...rows.map(
-                            (r) => Padding(
-                              padding: const EdgeInsets.only(bottom: MfSpace.md),
-                              child: _CategoryBudgetCard(
-                                row: r,
-                                onTap: () => _openEdit(r),
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                );
-              },
-              loading: () => const _BudgetLoadingBody(),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.all(MfSpace.xxl),
-                child: LedgerErrorState(
-                  title: 'Could not load budgets',
-                  message:
-                      e is DioException ? dioErrorMessage(e) : e.toString(),
-                  onRetry: _pull,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       floatingActionButton: MoneyFlowPremiumExtendedFab(
         heroTag: 'budget_add_fab',
@@ -568,7 +543,17 @@ class _MonthlyOverviewCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(MfSpace.xl),
-      decoration: heroCardDecoration(),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1E2A63),
+            const Color(0xFF2A43B8),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -738,11 +723,19 @@ class _CategoryBudgetCard extends StatelessWidget {
     final start = _barGradientStart(spent, limit, exceeded);
     final end = _barGradientEnd(start);
 
-    return AppCard(
-      glass: true,
-      onTap: onTap,
-      padding: const EdgeInsets.all(MfSpace.lg),
-      child: Column(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(MfSpace.lg),
+          decoration: BoxDecoration(
+            color: const Color(0xFF121A2B),
+            borderRadius: BorderRadius.circular(MfRadius.lg),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -829,6 +822,65 @@ class _CategoryBudgetCard extends StatelessWidget {
                   ? MfPalette.expenseRed
                   : cs.onSurface.withValues(alpha: 0.45),
             ),
+          ),
+        ],
+      ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthSelector extends StatelessWidget {
+  const _MonthSelector({
+    required this.monthLabel,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final String monthLabel;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: MfSpace.sm, bottom: MfSpace.sm),
+      padding: const EdgeInsets.symmetric(horizontal: MfSpace.xs),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A2B),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_left_rounded, size: 18),
+            color: Colors.white.withValues(alpha: 0.82),
+            onPressed: onPrevious,
+            tooltip: 'Previous month',
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 104, maxWidth: 140),
+            child: Text(
+              monthLabel,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_right_rounded, size: 18),
+            color: Colors.white.withValues(alpha: 0.82),
+            onPressed: onNext,
+            tooltip: 'Next month',
           ),
         ],
       ),

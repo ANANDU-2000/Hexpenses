@@ -6,8 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma } from '@prisma/client';
-import { UserRole } from '@prisma/client';
+import { AppUserStatus, Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -98,6 +97,9 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid email or password.');
+    if (user.appUserStatus === AppUserStatus.banned) {
+      throw new UnauthorizedException('Account suspended.');
+    }
     return this.issueTokenPair(
       { id: user.id, phone: user.phone, email: user.email, role: user.role },
       meta,
@@ -113,6 +115,9 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
+    if (user.appUserStatus === AppUserStatus.banned) {
+      throw new UnauthorizedException('Account suspended.');
+    }
     return this.issueTokenPair(
       { id: user.id, phone: user.phone, email: user.email, role: user.role },
       meta,

@@ -1,0 +1,46 @@
+# MONEYFLOW AI — CURSOR AI MASTER RULES
+
+You are an expert Flutter 3.x / Dart 3 engineer for premium fintech apps. Production-grade, null-safe Dart, Riverpod 2.6. Direct, precise, no filler.
+
+## PROJECT
+- App: MoneyFlow AI (India), package `moneyflow_ai`
+- Stack: Flutter 3.x, Dart SDK `>=3.2.0 <4.0.0`, Riverpod 2.6, Dio 5.7, Drift 2.26, fl_chart 0.70, google_fonts 6.2
+- Currency: INR with en_IN grouping; use `MfCurrency` / `NumberFormat.currency` with rupee symbol
+- Modes: `kNoApiMode` true = offline Drift seed; false = REST via `LedgerSyncService`
+
+## DESIGN TOKENS (no raw hex in UI code — use MfPalette / ColorScheme)
+- `MfPalette.neonGreen` — CTA / lime accent
+- `MfPalette.incomeGreen` — positive amounts
+- `MfPalette.expenseRed` — negative / expense emphasis
+- `MfPalette.warningAmber` — budget warnings
+- `MfPalette.canvas` / canvas gradients — dark background
+- `MfPalette.cardBg`, `accentSoftPurple`, `cs.primary` for brand
+
+Never: `withOpacity()` → use `withValues(alpha:)`.
+
+Typography: Manrope (display/amounts), Inter (body), Plus Jakarta Sans (section titles).
+Spacing: `MfSpace.*`; radius: `MfRadius.*`; motion: `MfMotion.*`.
+
+No1px solid borders for section separation (tonal surfaces + spacing; glass borders exception per DESIGN.md).
+
+## STATE
+Riverpod only: `ref.watch` / `ref.read`. `setState` only for ephemeral UI (toggles, tab index, animation flags).
+
+## OFFLINE-FIRST
+Reads from Drift; writes via `LedgerSyncService` / providers. Guard API with `kNoApiMode` and `DioException` handling.
+
+## CODE QUALITY
+- `context.mounted` after `await`
+- Currency/date formatting per project conventions
+- Loading / error / empty states for lists
+- Const where possible; dispose controllers
+
+## ANTI-PATTERNS
+No `Provider.of`, no `Scaffold` nesting, no `withOpacity`, no hardcoded money without intl.
+
+## ACTIVE BUG SWEEP (when touching these areas)
+- BUG-001: `withOpacity` → `withValues(alpha:)`
+- BUG-003: Shell `extendBody: true`; tab scrollables need bottom inset for FAB + `padding.bottom`
+- Prefer bundled fonts in `assets/google_fonts/` with `GoogleFonts.config.allowRuntimeFetching = false` on web
+
+Refer to repo `CLAUDE.md` for file layout and provider patterns.

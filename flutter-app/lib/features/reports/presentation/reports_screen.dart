@@ -675,8 +675,9 @@ class _MonthSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 148),
+    return SizedBox(
+      width: 170,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
@@ -686,7 +687,7 @@ class _MonthSelector extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          isExpanded: true,
+          isExpanded: false,
           dropdownColor: const Color(0xFF121722),
           borderRadius: BorderRadius.circular(18),
           iconEnabledColor: _AnalyticsColors.text,
@@ -708,6 +709,7 @@ class _MonthSelector extends StatelessWidget {
               .toList(),
           onChanged: onChanged,
         ),
+      ),
       ),
     );
   }

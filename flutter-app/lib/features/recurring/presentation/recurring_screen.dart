@@ -4,14 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/design_system/app_card.dart';
-import '../../../core/design_system/premium_fab.dart';
+import '../../../core/design_system/app_button.dart';
 import '../../../core/dio_errors.dart';
 import '../../../core/theme/money_flow_tokens.dart';
 import '../../../core/widgets/ledger_async_states.dart';
 import '../../../core/widgets/ledger_ui.dart';
-import '../../../core/widgets/premium_fintech_app_bar.dart';
-import '../../../core/widgets/premium_fintech_backdrop.dart';
 import '../../expenses/application/expense_providers.dart';
 import '../application/recurring_providers.dart';
 import '../data/recurring_api.dart';
@@ -75,6 +72,16 @@ String _frequencyShort(String? freq) {
   }
 }
 
+IconData _subscriptionIconFor(String title) {
+  final t = title.toLowerCase();
+  if (t.contains('netflix')) return Icons.movie_filter_rounded;
+  if (t.contains('spotify')) return Icons.music_note_rounded;
+  if (t.contains('youtube')) return Icons.ondemand_video_rounded;
+  if (t.contains('prime')) return Icons.live_tv_rounded;
+  if (t.contains('rent')) return Icons.home_work_rounded;
+  return Icons.subscriptions_rounded;
+}
+
 class RecurringScreen extends ConsumerWidget {
   const RecurringScreen({super.key});
 
@@ -87,96 +94,101 @@ class RecurringScreen extends ConsumerWidget {
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.transparent,
-      appBar: PremiumFintechAppBar.bar(
-        context: context,
-        title: 'Recurring',
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const PremiumFintechBackdrop(),
-          list.when(
-            data: (rows) {
-              if (rows.isEmpty) {
-                return RefreshIndicator(
-                  color: MfPalette.neonGreen,
-                  backgroundColor: cs.surfaceContainerHigh,
-                  onRefresh: () async {
-                    ref.invalidate(recurringListProvider);
-                    await ref.read(recurringListProvider.future);
-                  },
-                  child: _RecurringEmptyBody(),
-                );
-              }
-              final monthly = _monthlyTotalActive(rows);
-              return RefreshIndicator(
-                color: MfPalette.neonGreen,
-                backgroundColor: cs.surfaceContainerHigh,
-                onRefresh: () async {
-                  ref.invalidate(recurringListProvider);
-                  await ref.read(recurringListProvider.future);
-                },
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        MfSpace.xxl,
-                        MfSpace.sm,
-                        MfSpace.xxl,
-                        MediaQuery.paddingOf(context).bottom + 100,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _MonthlyRecurringHero(
-                            totalFormatted: MfCurrency.formatInr(monthly),
-                          ),
-                          const SizedBox(height: MfSpace.xl),
-                          Text(
-                            'Subscriptions',
-                            style: GoogleFonts.manrope(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: cs.onSurface.withValues(alpha: 0.72),
-                            ),
-                          ),
-                          const SizedBox(height: MfSpace.md),
-                          ...rows.map(
-                            (r) => Padding(
-                              padding: const EdgeInsets.only(bottom: MfSpace.md),
-                              child: _SubscriptionCard(row: r),
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const _RecurringLoadingBody(),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(MfSpace.xxl),
-              child: LedgerErrorState(
-                title: 'Could not load recurring expenses',
-                message: e is DioException ? dioErrorMessage(e) : e.toString(),
-                onRetry: () {
-                  ref.invalidate(recurringListProvider);
-                },
-              ),
-            ),
+      backgroundColor: const Color(0xFF0B1220),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1220),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Recurring Payments',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            color: Colors.white.withValues(alpha: 0.9),
           ),
-        ],
+        ),
       ),
-      floatingActionButton: MoneyFlowPremiumExtendedFab(
-        heroTag: 'recurring_add_fab',
-        tooltip: 'Add recurring',
-        icon: Icons.add_rounded,
-        label: 'Add recurring',
-        onPressed: () => _openForm(context, ref),
+      body: list.when(
+        data: (rows) {
+          if (rows.isEmpty) {
+            return RefreshIndicator(
+              color: MfPalette.neonGreen,
+              backgroundColor: const Color(0xFF121A2B),
+              onRefresh: () async {
+                ref.invalidate(recurringListProvider);
+                await ref.read(recurringListProvider.future);
+              },
+              child: _RecurringEmptyBody(onAdd: () => _openForm(context, ref)),
+            );
+          }
+          final monthly = _monthlyTotalActive(rows);
+          return RefreshIndicator(
+            color: MfPalette.neonGreen,
+            backgroundColor: const Color(0xFF121A2B),
+            onRefresh: () async {
+              ref.invalidate(recurringListProvider);
+              await ref.read(recurringListProvider.future);
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    MfSpace.lg,
+                    MfSpace.sm,
+                    MfSpace.lg,
+                    MediaQuery.paddingOf(context).bottom + 92,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _MonthlyRecurringHero(
+                        totalFormatted: MfCurrency.formatInr(monthly),
+                      ),
+                      const SizedBox(height: MfSpace.lg),
+                      Text(
+                        'Subscriptions',
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: cs.onSurface.withValues(alpha: 0.76),
+                        ),
+                      ),
+                      const SizedBox(height: MfSpace.md),
+                      ...rows.map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                          child: _SubscriptionCard(row: r),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        loading: () => const _RecurringLoadingBody(),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(MfSpace.xxl),
+          child: LedgerErrorState(
+            title: 'Could not load recurring expenses',
+            message: e is DioException ? dioErrorMessage(e) : e.toString(),
+            onRetry: () {
+              ref.invalidate(recurringListProvider);
+            },
+          ),
+        ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(MfSpace.lg, MfSpace.xs, MfSpace.lg, MfSpace.md),
+        child: AppButton(
+          label: 'Add Recurring',
+          icon: Icons.add_rounded,
+          onPressed: () => _openForm(context, ref),
+          expand: true,
+        ),
+      ),
     );
   }
 
@@ -351,14 +363,18 @@ class _MonthlyRecurringHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: MfSpace.xl,
-        vertical: MfSpace.xl,
+        vertical: MfSpace.lg,
       ),
-      decoration: heroCardDecoration(),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A2B),
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'MONTHLY RECURRING (EST.)',
+            'MONTHLY TOTAL',
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -378,7 +394,7 @@ class _MonthlyRecurringHero extends StatelessWidget {
           ),
           const SizedBox(height: MfSpace.xs),
           Text(
-            'Active subscriptions, normalized to a monthly run rate',
+            'Estimated from all active recurring payments',
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -427,7 +443,6 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final r = widget.row;
     final title = r['title']?.toString() ?? 'Subscription';
     final amount = r['amount'];
@@ -435,9 +450,13 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
     final active = _isActiveRow(r);
     final muted = !active;
 
-    return AppCard(
-      glass: true,
-      padding: const EdgeInsets.all(MfSpace.lg),
+    return Container(
+      padding: const EdgeInsets.all(MfSpace.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A2B),
+        borderRadius: BorderRadius.circular(MfRadius.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -445,23 +464,16 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(MfRadius.md),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      MfPalette.accentSoftPurple.withValues(alpha: muted ? 0.25 : 0.55),
-                      MfPalette.neonGreen.withValues(alpha: muted ? 0.1 : 0.22),
-                    ],
-                  ),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
                 child: Icon(
-                  Icons.subscriptions_rounded,
+                  _subscriptionIconFor(title),
                   color: Colors.white.withValues(alpha: muted ? 0.5 : 0.95),
-                  size: 24,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: MfSpace.md),
@@ -473,8 +485,8 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                       title,
                       style: GoogleFonts.manrope(
                         fontWeight: FontWeight.w700,
-                        fontSize: 17,
-                        color: cs.onSurface.withValues(alpha: muted ? 0.45 : 1),
+                        fontSize: 15,
+                        color: Colors.white.withValues(alpha: muted ? 0.45 : 1),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -485,10 +497,19 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: cs.onSurface.withValues(alpha: 0.42),
+                        color: Colors.white.withValues(alpha: 0.42),
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: MfSpace.md),
+              Text(
+                MfCurrency.formatInr(amount),
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Colors.white.withValues(alpha: muted ? 0.45 : 0.98),
                 ),
               ),
               AbsorbPointer(
@@ -502,13 +523,13 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                       if (states.contains(WidgetState.selected)) {
                         return MfPalette.neonGreenSoft;
                       }
-                      return cs.outline;
+                      return Colors.white.withValues(alpha: 0.65);
                     }),
                     trackColor: WidgetStateProperty.resolveWith((states) {
                       if (states.contains(WidgetState.selected)) {
                         return MfPalette.neonGreen.withValues(alpha: 0.42);
                       }
-                      return cs.surfaceContainerHighest.withValues(alpha: 0.85);
+                      return Colors.white.withValues(alpha: 0.14);
                     }),
                     trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
                   ),
@@ -516,44 +537,14 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
               ),
             ],
           ),
-          const SizedBox(height: MfSpace.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Next billing',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                        color: cs.onSurface.withValues(alpha: 0.45),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _nextBillingLabel(r),
-                      style: GoogleFonts.manrope(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: cs.onSurface.withValues(alpha: muted ? 0.4 : 0.92),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                MfCurrency.formatInr(amount),
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  color: cs.onSurface.withValues(alpha: muted ? 0.4 : 1),
-                ),
-              ),
-            ],
+          const SizedBox(height: MfSpace.sm),
+          Text(
+            'Next billing: ${_nextBillingLabel(r)}',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: muted ? 0.35 : 0.58),
+            ),
           ),
         ],
       ),
@@ -562,6 +553,10 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
 }
 
 class _RecurringEmptyBody extends StatelessWidget {
+  const _RecurringEmptyBody({required this.onAdd});
+
+  final VoidCallback onAdd;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -573,9 +568,9 @@ class _RecurringEmptyBody extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               MfSpace.xxl,
-              MfSpace.xxxl,
               MfSpace.xxl,
-              MediaQuery.paddingOf(context).bottom + 100,
+              MfSpace.xxl,
+              MediaQuery.paddingOf(context).bottom + 92,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -593,13 +588,20 @@ class _RecurringEmptyBody extends StatelessWidget {
                 ),
                 const SizedBox(height: MfSpace.md),
                 Text(
-                  'Track Netflix, rent, SIPs, and other subscriptions. We will remind you before each billing cycle.',
+                  'Add subscriptions like Netflix, Spotify, rent, and utilities to avoid missing due dates.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     height: 1.45,
                     color: cs.onSurface.withValues(alpha: 0.55),
                   ),
+                ),
+                const SizedBox(height: MfSpace.xl),
+                AppButton(
+                  label: 'Add Recurring',
+                  icon: Icons.add_rounded,
+                  onPressed: onAdd,
+                  expand: false,
                 ),
               ],
             ),
@@ -618,9 +620,9 @@ class _RecurringLoadingBody extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        MfSpace.xxl,
+        MfSpace.lg,
         MfSpace.md,
-        MfSpace.xxl,
+        MfSpace.lg,
         MediaQuery.paddingOf(context).bottom + 88,
       ),
       children: [

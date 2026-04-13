@@ -128,6 +128,12 @@ enum AuditAction {
   DELETE
 }
 
+/// End-user account state (admin can ban / activate).
+enum AppUserStatus {
+  active
+  banned
+}
+
 model AuditLog {
   id        String      @id @default(cuid())
   userId    String
@@ -151,6 +157,7 @@ model User {
   passwordHash            String?
   currency                String                   @default("INR")
   role                    UserRole                 @default(owner)
+  appUserStatus           AppUserStatus            @default(active)
   timeZone                String                   @default("UTC")
   locale                  String                   @default("en")
   deletedAt               DateTime?
@@ -180,6 +187,52 @@ model User {
   workspaceInvitesCreated WorkspaceInvite[] @relation("WorkspaceInviteCreator")
   expensesEntered         Expense[]         @relation("ExpenseEnteredBy")
   auditLogs               AuditLog[]
+  appUsageEvents          AppUsageEvent[]
+}
+
+/// Dashboard admin (separate from end users).
+model Admin {
+  id           String @id @default(cuid())
+  email        String             @unique
+  passwordHash String
+  name         String
+  role         String             @default("admin")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  activityLogs AdminActivityLog[]
+}
+
+/// Screen / session analytics (mobile or web client posts events).
+model AppUsageEvent {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  screen          String
+  durationMs      Int       @default(0)
+  sessionId       String?
+  clientTimestamp DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt])
+}
+
+model AdminActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([adminId, createdAt(sort: Desc)])
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value String
+  updatedAt DateTime @updatedAt
 }
 
 model RefreshToken {

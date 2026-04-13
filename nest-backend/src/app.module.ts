@@ -24,6 +24,7 @@ import { IncomesModule } from './modules/incomes/incomes.module';
 import { WealthModule } from './modules/wealth/wealth.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { QueueModule } from './queue/queue.module';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 
@@ -60,6 +61,7 @@ import { TransformResponseInterceptor } from './common/interceptors/transform-re
     DocumentsModule,
     AiModule,
     WhatsappModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
