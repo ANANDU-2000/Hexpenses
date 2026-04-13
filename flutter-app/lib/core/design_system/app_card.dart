@@ -25,7 +25,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final background = glass
-        ? cs.surfaceContainerLowest.withValues(alpha: 0.72)
+        ? Colors.white.withValues(alpha: 0.10)
         : cs.surfaceContainerLowest;
 
     Widget card = Container(
@@ -33,13 +33,19 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(MfRadius.lg),
         boxShadow: [
+          if (glass)
+            BoxShadow(
+              color: MfPalette.accentSoftPurple.withValues(alpha: 0.12),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
           BoxShadow(
-            color: cs.shadow.withValues(alpha: glass ? 0.12 : 0.08),
+            color: cs.shadow.withValues(alpha: glass ? 0.14 : 0.08),
             blurRadius: glass ? 32 : 24,
             offset: const Offset(0, 16),
           ),
           BoxShadow(
-            color: cs.shadow.withValues(alpha: glass ? 0.06 : 0.04),
+            color: cs.shadow.withValues(alpha: glass ? 0.07 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -49,8 +55,8 @@ class AppCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(MfRadius.lg),
         child: BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: glass ? 28 : 0,
-            sigmaY: glass ? 28 : 0,
+            sigmaX: glass ? 24 : 0,
+            sigmaY: glass ? 24 : 0,
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -58,14 +64,14 @@ class AppCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(MfRadius.lg),
               border: Border.all(
                 color: glass
-                    ? cs.outlineVariant.withValues(alpha: 0.2)
+                    ? Colors.white.withValues(alpha: 0.14)
                     : cs.outlineVariant.withValues(alpha: 0.08),
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withValues(alpha: glass ? 0.2 : 0.08),
+                  Colors.white.withValues(alpha: glass ? 0.06 : 0.08),
                   Colors.white.withValues(alpha: 0),
                 ],
               ),

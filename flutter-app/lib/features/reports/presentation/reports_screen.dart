@@ -897,6 +897,7 @@ class _AnalyticsChartCard extends StatelessWidget {
                         final touched = response?.touchedSection;
                         if (!event.isInterestedForInteractions ||
                             touched == null ||
+                            touched.touchedSectionIndex < 0 ||
                             touched.touchedSectionIndex >=
                                 chartBuckets.length) {
                           onCategoryTap(null);

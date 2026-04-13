@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 abstract final class MfRadius {
   static const double sm = 12;
   static const double md = 16;
-  static const double lg = 22;
+  /// Primary cards, tiles (premium fintech spec: 20px).
+  static const double lg = 20;
   static const double xl = 28;
 }
 
@@ -28,17 +29,22 @@ abstract final class MfMotion {
 
 /// Brand + semantic colors (use with [ColorScheme] in theme).
 abstract final class MfPalette {
-  // Canvas
-  static const Color canvas = Color(0xFF07112D);
-  static const Color phoneBg = Color(0xFF091227);
-  static const Color cardBg = Color(0xD9FFFFFF);
+  // Canvas — premium dark gradient endpoints
+  static const Color canvasGradientTop = Color(0xFF0B1220);
+  static const Color canvasGradientBottom = Color(0xFF0E1A2B);
+  static const Color canvas = canvasGradientTop;
+  static const Color phoneBg = canvasGradientBottom;
+  static const Color cardBg = Color(0x1AFFFFFF);
   static const Color cardBorder = Color(0x24FFFFFF);
+
+  /// Secondary accent (CTAs, glows, selected chrome).
+  static const Color accentSoftPurple = Color(0xFF8B9CFF);
 
   // Brand
   static const Color primary = Color(0xFF000B60);
   static const Color primaryDark = Color(0xFF000844);
   static const Color primaryLight = Color(0xFF2236A8);
-  static const Color primaryGlow = Color(0xFF7C8EFF);
+  static const Color primaryGlow = accentSoftPurple;
 
   /// Premium fintech neon accent (shell, CTAs, highlights).
   static const Color neonGreen = Color(0xFFE6FF4D);
@@ -65,8 +71,8 @@ abstract final class MfPalette {
   static const Color lightBg = Color(0xFFF8F9FA);
   static const Color lightBgElevated = Color(0xFFFFFFFF);
   static const Color lightMuted = Color(0xFF5D6471);
-  static const Color darkBg = Color(0xFF091227);
-  static const Color darkBgElevated = Color(0xFF111A35);
+  static const Color darkBg = canvasGradientTop;
+  static const Color darkBgElevated = Color(0xFF131D32);
   static const Color darkMuted = Color(0xFF98A3C5);
 
   /// Backwards-compatible names used by older widgets / light theme.
@@ -112,6 +118,16 @@ abstract final class MfCurrency {
 
 const String kCurrencySymbol = MfCurrency.symbol;
 
+/// Global vertical canvas gradient (dark shell / home / lists).
+const LinearGradient mfPremiumCanvasGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    MfPalette.canvasGradientTop,
+    MfPalette.canvasGradientBottom,
+  ],
+);
+
 /// Glass card decoration - use for premium list and summary cards.
 BoxDecoration glassCard({
   Color? color,
@@ -121,9 +137,22 @@ BoxDecoration glassCard({
   color: color ?? MfPalette.cardBg,
   borderRadius: BorderRadius.circular(borderRadius),
   border: Border.all(color: borderColor ?? const Color(0x26FFFFFF), width: 1),
-  boxShadow: const [
-    BoxShadow(offset: Offset(0, 18), blurRadius: 48, color: Color(0x12000B60)),
-    BoxShadow(offset: Offset(0, 6), blurRadius: 18, color: Color(0x100C152F)),
+  boxShadow: [
+    BoxShadow(
+      color: MfPalette.accentSoftPurple.withValues(alpha: 0.07),
+      blurRadius: 24,
+      offset: const Offset(0, 10),
+    ),
+    const BoxShadow(
+      offset: Offset(0, 18),
+      blurRadius: 48,
+      color: Color(0x12000B60),
+    ),
+    const BoxShadow(
+      offset: Offset(0, 6),
+      blurRadius: 18,
+      color: Color(0x100C152F),
+    ),
   ],
 );
 
@@ -186,7 +215,7 @@ class MoneyFlowThemeExtension extends ThemeExtension<MoneyFlowThemeExtension> {
     success: MfPalette.incomeGreen,
     onSuccess: Color(0xFF06120E),
     warning: MfPalette.warningAmber,
-    glassOpacity: 0.48,
+    glassOpacity: 0.52,
   );
 
   @override

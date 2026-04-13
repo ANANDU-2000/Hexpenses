@@ -39,9 +39,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   static const double _splitBreakpoint = 880;
 
-  static const Color _bgDeep = Color(0xFF0D0D0D);
-  static const Color _bgElevated = Color(0xFF121212);
-
   @override
   void dispose() {
     _signInEmail.dispose();
@@ -162,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgDeep,
+      backgroundColor: MfPalette.canvasGradientTop,
       resizeToAvoidBottomInset: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -426,9 +423,9 @@ class _LoginAmbientBackdrop extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            _LoginScreenState._bgDeep,
-            _LoginScreenState._bgElevated,
-            _LoginScreenState._bgDeep,
+            MfPalette.canvasGradientTop,
+            MfPalette.canvasGradientBottom,
+            MfPalette.canvasGradientTop,
           ],
           stops: const [0, 0.45, 1],
         ),
@@ -445,7 +442,7 @@ class _LoginAmbientBackdrop extends StatelessWidget {
                 height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: MfPalette.neonGreen.withValues(alpha: 0.07),
+                  color: MfPalette.accentSoftPurple.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -460,7 +457,7 @@ class _LoginAmbientBackdrop extends StatelessWidget {
                 height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: MfPalette.neonGreen.withValues(alpha: 0.05),
+                  color: MfPalette.neonGreen.withValues(alpha: 0.06),
                 ),
               ),
             ),
@@ -477,7 +474,7 @@ class _AuthBrandPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: _LoginScreenState._bgElevated,
+      color: MfPalette.darkBgElevated,
       child: Stack(
         children: [
           Positioned.fill(
@@ -487,9 +484,9 @@ class _AuthBrandPanel extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    MfPalette.neonGreen.withValues(alpha: 0.06),
+                    MfPalette.accentSoftPurple.withValues(alpha: 0.08),
                     Colors.transparent,
-                    _LoginScreenState._bgElevated,
+                    MfPalette.darkBgElevated,
                   ],
                 ),
               ),

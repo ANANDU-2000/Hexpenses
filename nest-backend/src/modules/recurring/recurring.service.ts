@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import {
   ExpenseSource,
   Frequency,
@@ -54,6 +54,18 @@ export class RecurringService implements OnModuleInit {
         title: dto.title,
         note: dto.note,
       },
+      include: { category: true, account: true },
+    });
+  }
+
+  async setActive(userId: string, id: string, active: boolean) {
+    const row = await this.prisma.recurringExpense.findFirst({
+      where: { id, userId },
+    });
+    if (!row) throw new NotFoundException('Recurring expense not found');
+    return this.prisma.recurringExpense.update({
+      where: { id },
+      data: { active },
       include: { category: true, account: true },
     });
   }

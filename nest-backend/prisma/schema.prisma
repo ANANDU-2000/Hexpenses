@@ -470,13 +470,20 @@ model Insurance {
 }
 
 model Vehicle {
-  id             String           @id @default(cuid())
-  name           String
-  number         String
-  userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses       VehicleExpense[]
-  ledgerExpenses Expense[]        @relation("ExpenseVehicle")
+  id                    String           @id @default(cuid())
+  name                  String
+  number                String
+  /// car | bike | other
+  vehicleType           String           @default("car")
+  purchaseDate          DateTime?
+  purchasePrice         Decimal?         @db.Decimal(14, 2)
+  currentValue          Decimal?         @db.Decimal(14, 2)
+  /// Motor insurance policy end (for status badge)
+  insuranceExpiryDate   DateTime?
+  userId                String
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses              VehicleExpense[]
+  ledgerExpenses        Expense[]        @relation("ExpenseVehicle")
 
   @@unique([userId, number])
 }

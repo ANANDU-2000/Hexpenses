@@ -10,19 +10,58 @@ class VehiclesApi {
   final Dio _dio;
 
   Future<List<Map<String, dynamic>>> list() async {
-    final res = await _dio.get<List<dynamic>>('/vehicles');
-    return (res.data ?? []).cast<Map<String, dynamic>>();
+    final res = await _dio.get<dynamic>('/vehicles');
+    return unwrapApiList(res.data);
   }
 
   Future<Map<String, dynamic>> create({
     required String name,
     required String number,
+    String vehicleType = 'car',
+    DateTime? purchaseDate,
+    double? purchasePrice,
+    double? currentValue,
+    DateTime? insuranceExpiryDate,
   }) async {
-    final res = await _dio.post<Map<String, dynamic>>(
+    final res = await _dio.post<dynamic>(
       '/vehicles',
-      data: {'name': name, 'number': number},
+      data: {
+        'name': name,
+        'number': number,
+        'vehicleType': vehicleType,
+        'purchaseDate': purchaseDate?.toUtc().toIso8601String(),
+        'purchasePrice': purchasePrice,
+        'currentValue': currentValue,
+        'insuranceExpiryDate': insuranceExpiryDate?.toUtc().toIso8601String(),
+      },
     );
-    return res.data!;
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
+  /// Full asset update (nulls clear optional fields).
+  Future<Map<String, dynamic>> updateVehicle({
+    required String id,
+    required String name,
+    required String number,
+    required String vehicleType,
+    DateTime? purchaseDate,
+    double? purchasePrice,
+    double? currentValue,
+    DateTime? insuranceExpiryDate,
+  }) async {
+    final res = await _dio.patch<dynamic>(
+      '/vehicles/$id',
+      data: {
+        'name': name,
+        'number': number,
+        'vehicleType': vehicleType,
+        'purchaseDate': purchaseDate?.toUtc().toIso8601String(),
+        'purchasePrice': purchasePrice,
+        'currentValue': currentValue,
+        'insuranceExpiryDate': insuranceExpiryDate?.toUtc().toIso8601String(),
+      },
+    );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
 
   Future<Map<String, dynamic>> addCost({

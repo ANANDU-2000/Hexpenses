@@ -273,11 +273,17 @@ async function main() {
     },
   });
 
+  const insVehicleEnd = new Date(now.getTime() + 45 * 86400000);
   const vehicle = await prisma.vehicle.create({
     data: {
       userId: user.id,
       name: 'Demo Car',
       number: 'DEMO-001',
+      vehicleType: 'car',
+      purchaseDate: new Date(now.getFullYear() - 1, 2, 10),
+      purchasePrice: new Prisma.Decimal('850000'),
+      currentValue: new Prisma.Decimal('720000'),
+      insuranceExpiryDate: insVehicleEnd,
     },
   });
 

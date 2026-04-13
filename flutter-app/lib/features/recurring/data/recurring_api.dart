@@ -14,6 +14,17 @@ class RecurringApi {
     return unwrapApiList(res.data);
   }
 
+  Future<Map<String, dynamic>> setActive({
+    required String id,
+    required bool active,
+  }) async {
+    final res = await _dio.patch<dynamic>(
+      '/recurring/$id/active',
+      data: {'active': active},
+    );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
   Future<Map<String, dynamic>> create({
     required double amount,
     required String frequency,

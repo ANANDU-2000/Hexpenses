@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/design_system/app_card.dart';
 import '../../../core/design_system/app_skeleton.dart';
+import '../../../core/design_system/premium_fab.dart';
 import '../../../core/design_system/transaction_tile.dart';
 import '../../../core/dio_errors.dart';
 import '../../../core/navigation/ledger_page_routes.dart';
@@ -311,7 +312,6 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final async = _watchExpenses();
     final title = widget.accountId != null
         ? (widget.accountName != null
@@ -322,17 +322,7 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              cs.surface,
-              cs.surface,
-              cs.surfaceContainerLow.withValues(alpha: 0.72),
-            ],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: mfPremiumCanvasGradient),
         child: Stack(
           children: [
             Positioned(
@@ -346,8 +336,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        cs.primary.withValues(alpha: 0.14),
-                        cs.primary.withValues(alpha: 0),
+                        MfPalette.accentSoftPurple.withValues(alpha: 0.14),
+                        MfPalette.accentSoftPurple.withValues(alpha: 0),
                       ],
                     ),
                   ),
@@ -385,7 +375,10 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: MoneyFlowPremiumExtendedFab(
+        heroTag: 'expense_list_add',
+        tooltip: 'Add expense',
         onPressed: () {
           Navigator.of(context).push(
             LedgerPageRoutes.fadeSlide<void>(
@@ -393,11 +386,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
             ),
           );
         },
-        icon: const Icon(Icons.add_rounded),
-        label: Text(
-          'Add expense',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
+        icon: Icons.add_rounded,
+        label: 'Add expense',
       ),
     );
   }
@@ -709,6 +699,7 @@ class _LoadedExpenseView extends StatelessWidget {
                             isExpense: true,
                             avatarColor: MfPalette.expenseRed,
                             avatarLabel: avatar,
+                            animationIndex: index,
                           ),
                         ),
                       );

@@ -14,25 +14,25 @@ class NotificationsApi {
     bool? unreadOnly,
     int? limit,
   }) async {
-    final res = await _dio.get<Map<String, dynamic>>(
+    final res = await _dio.get<dynamic>(
       '/notifications',
       queryParameters: {
-        if (category != null && category.isNotEmpty) 'category': category,
+        if (category case final String c when c.isNotEmpty) 'category': c,
         if (unreadOnly == true) 'unreadOnly': 'true',
-        'limit': ?limit,
+        if (limit case final int l) 'limit': l,
       },
     );
-    final body = unwrapApiMap(res.data) ?? res.data ?? {};
+    final body = unwrapApiMap(res.data) ?? {};
     final raw = body['notifications'];
-    if (raw is List) return raw.cast<Map<String, dynamic>>();
+    if (raw is List) {
+      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
     return [];
   }
 
   Future<Map<String, dynamic>> markRead(String id) async {
-    final res = await _dio.patch<Map<String, dynamic>>(
-      '/notifications/$id/read',
-    );
-    return unwrapApiMap(res.data) ?? res.data ?? {};
+    final res = await _dio.patch<dynamic>('/notifications/$id/read');
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
 
   Future<void> markAllRead() async {

@@ -23,18 +23,7 @@ class BudgetsApi {
 
   Future<List<Map<String, dynamic>>> list({String? month}) async {
     final res = await rawListResponse(month: month);
-    final data = res.data;
-    if (data is List) {
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    }
-    if (data is Map<String, dynamic> &&
-        data['success'] == true &&
-        data['data'] is List) {
-      return (data['data'] as List)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-    }
-    return [];
+    return unwrapApiList(res.data);
   }
 
   Future<Map<String, dynamic>> create({
@@ -49,6 +38,17 @@ class BudgetsApi {
         'limit': limit,
         if (month != null && month.isNotEmpty) 'month': month,
       },
+    );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> update({
+    required String id,
+    required double limit,
+  }) async {
+    final res = await _dio.patch<dynamic>(
+      '/budgets/$id',
+      data: {'limit': limit},
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }

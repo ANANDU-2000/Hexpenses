@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { VehiclesService } from './vehicles.service';
 
@@ -15,6 +15,15 @@ export class VehiclesController {
   @Post()
   create(@Req() req: { user: { userId: string } }, @Body() body: any) {
     return this.vehicles.create(req.user.userId, body);
+  }
+
+  @Patch(':id')
+  update(
+    @Req() req: { user: { userId: string } },
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.vehicles.update(req.user.userId, id, body);
   }
 
   @Post(':id/costs')

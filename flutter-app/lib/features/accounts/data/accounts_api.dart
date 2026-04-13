@@ -66,7 +66,11 @@ class AccountsApi {
   }) async {
     final res = await _dio.post<dynamic>(
       '/accounts',
-      data: {'name': name, 'type': type, 'initialBalance': ?initialBalance},
+      data: {
+        'name': name,
+        'type': type,
+        'initialBalance': ?initialBalance,
+      },
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }

@@ -1,4 +1,7 @@
-/// Unwraps Nest `{ success, data }` or returns the map as-is.
+/// Unwraps Nest `{ success, data }` ([TransformResponseInterceptor]) or returns the map as-is.
+///
+/// List endpoints still arrive as a **Map** (`{ success: true, data: [...] }`), not a raw JSON array.
+/// Use [unwrapApiList] instead of `_dio.get<List<…>>` + casting `response.data`.
 Map<String, dynamic>? unwrapApiMap(dynamic raw) {
   if (raw is! Map) return null;
   final m = Map<String, dynamic>.from(raw);

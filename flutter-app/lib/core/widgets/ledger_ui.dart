@@ -3,7 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../design_system/premium_fab.dart';
 import '../theme/app_theme.dart';
+import '../theme/money_flow_tokens.dart';
 
 /// Primary CTA: gradient primary → primary_container, 12px radius (DESIGN.md §2, §5).
 class LedgerPrimaryGradientButton extends StatelessWidget {
@@ -21,20 +23,36 @@ class LedgerPrimaryGradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: loading ? null : onPressed,
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: MfPalette.neonGreen.withValues(alpha: 0.22),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: loading ? null : onPressed,
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    MfPalette.accentSoftPurple,
+                    cs.primary,
+                    MfPalette.neonGreenSoft.withValues(alpha: 0.85),
+                  ],
+                  stops: const [0.0, 0.55, 1.0],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-            ),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
@@ -45,13 +63,13 @@ class LedgerPrimaryGradientButton extends StatelessWidget {
                       width: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: cs.onPrimary,
+                        color: MfPalette.onNeonGreen,
                       ),
                     )
                   : DefaultTextStyle(
                       style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        color: MfPalette.onNeonGreen,
+                        fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),
                       child: child,
@@ -59,6 +77,7 @@ class LedgerPrimaryGradientButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -166,34 +185,28 @@ class LedgerGlassBar extends StatelessWidget {
   }
 }
 
-/// FAB with ambient shadow recipe (DESIGN.md §4).
+/// Premium circular FAB (gradient + glow), bottom-right via scaffold placement.
 class LedgerFab extends StatelessWidget {
   const LedgerFab({
     super.key,
     required this.onPressed,
     required this.icon,
     this.tooltip,
+    this.heroTag,
   });
 
   final VoidCallback onPressed;
   final IconData icon;
   final String? tooltip;
+  final Object? heroTag;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: ledgerAmbientFabShadows(cs),
-      ),
-      child: FloatingActionButton(
-        tooltip: tooltip,
-        elevation: 0,
-        highlightElevation: 0,
-        onPressed: onPressed,
-        child: Icon(icon),
-      ),
+    return MoneyFlowPremiumCircularFab(
+      onPressed: onPressed,
+      icon: icon,
+      tooltip: tooltip,
+      heroTag: heroTag,
     );
   }
 }

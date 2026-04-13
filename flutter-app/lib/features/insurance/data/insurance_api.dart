@@ -10,8 +10,8 @@ class InsuranceApi {
   final Dio _dio;
 
   Future<List<Map<String, dynamic>>> list() async {
-    final res = await _dio.get<List<dynamic>>('/insurance/policies');
-    return (res.data ?? []).cast<Map<String, dynamic>>();
+    final res = await _dio.get<dynamic>('/insurance/policies');
+    return unwrapApiList(res.data);
   }
 
   Future<Map<String, dynamic>> create({

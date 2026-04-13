@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,11 +5,11 @@ import 'package:intl/intl.dart';
 
 import '../../../core/api_config.dart';
 import '../../../core/design_system/app_skeleton.dart';
-import '../../../core/design_system/futuristic_balance_card.dart';
 import '../../../core/navigation/ledger_page_routes.dart';
 import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/money_flow_tokens.dart';
+import '../../../core/widgets/ledger_async_states.dart';
 import '../../expenses/application/expense_providers.dart';
 import '../../expenses/presentation/add_expense_screen.dart';
 import '../../income/application/income_providers.dart';
@@ -25,14 +23,13 @@ final userEmailProvider = Provider<String?>((ref) {
 });
 
 abstract final class _DashboardColors {
-  static const Color background = Color(0xFF0D0D0D);
-  static const Color backgroundSecondary = Color(0xFF141414);
-  static const Color panel = Color(0xCC171717);
-  static const Color panelSoft = Color(0x881C1C1C);
-  static const Color border = Color(0x22FFFFFF);
+  static const Color background = Color(0xFF0B1220);
+  static const Color panel = Color(0xFF121A2B); // Subtle card colors
+  static const Color panelSoft = Color(0x88121A2B);
+  static const Color border = Color(0x1AFFFFFF); // Minimal overlap
   static const Color textPrimary = Color(0xFFF7F8F3);
   static const Color textSecondary = Color(0xFF8D93A1);
-  static const Color lime = Color(0xFFE6FF4D);
+  static const Color lime = Color(0xFFE6FF4D); // Accent color
   static const Color limeSoft = Color(0xFFF3FD6F);
   static const Color cyan = Color(0xFF4ACBFF);
   static const Color positive = Color(0xFFE6FF4D);
@@ -339,7 +336,7 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
           const _DashboardBackdrop(),
           RefreshIndicator(
             color: _DashboardColors.lime,
-            backgroundColor: _DashboardColors.backgroundSecondary,
+            backgroundColor: _DashboardColors.background,
             onRefresh: () async {
               await _refreshDashboard(ref);
               await ref.read(dashboardOverviewProvider.future);
@@ -383,6 +380,37 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                               ],
                               const SizedBox(height: MfSpace.xxl),
                               _BalanceCard(summary: summary),
+                              const SizedBox(height: MfSpace.md),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _StatCard(
+                                      title: 'Income',
+                                      amount: _formatCurrency(summary.income),
+                                      icon: Icons.arrow_downward_rounded,
+                                      color: _DashboardColors.positive,
+                                    ),
+                                  ),
+                                  const SizedBox(width: MfSpace.sm),
+                                  Expanded(
+                                    child: _StatCard(
+                                      title: 'Expense',
+                                      amount: _formatCurrency(summary.expense),
+                                      icon: Icons.arrow_upward_rounded,
+                                      color: _DashboardColors.negative,
+                                    ),
+                                  ),
+                                  const SizedBox(width: MfSpace.sm),
+                                  Expanded(
+                                    child: _StatCard(
+                                      title: 'Cashflow',
+                                      amount: _formatSignedCurrency(summary.cashFlow),
+                                      icon: Icons.swap_vert_rounded,
+                                      color: summary.cashFlow >= 0 ? _DashboardColors.textPrimary : _DashboardColors.negative,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: MfSpace.xl),
                               _QuickActionsRow(
                                 actions: [
@@ -426,7 +454,10 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                               else if (expenses.isLoading || incomes.isLoading)
                                 const _TransactionsSkeleton()
                               else
-                                const _EmptyTransactionsCard(),
+                                _EmptyTransactionsCard(
+                                  onRecordTap: () =>
+                                      showMoneyFlowQuickCreateSheet(context),
+                                ),
                             ],
                           );
                         },
@@ -467,62 +498,9 @@ class _DashboardBackdrop extends StatelessWidget {
   const _DashboardBackdrop();
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                _DashboardColors.background,
-                _DashboardColors.backgroundSecondary,
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -120,
-          right: -40,
-          child: IgnorePointer(
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _DashboardColors.lime.withValues(alpha: 0.18),
-                    _DashboardColors.lime.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 120,
-          left: -80,
-          child: IgnorePointer(
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _DashboardColors.cyan.withValues(alpha: 0.18),
-                    _DashboardColors.cyan.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const DecoratedBox(
+    decoration: BoxDecoration(color: _DashboardColors.background),
+  );
 }
 
 class _ProfileHeader extends StatelessWidget {
@@ -537,56 +515,25 @@ class _ProfileHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome back',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _DashboardColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Hi, $name',
-                style: GoogleFonts.inter(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: _DashboardColors.textPrimary,
-                  letterSpacing: -0.9,
-                ),
-              ),
-            ],
+          child: Text(
+            'Hi, $name 👋',
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: _DashboardColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
           ),
         ),
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [_DashboardColors.lime, _DashboardColors.cyan],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _DashboardColors.lime.withValues(alpha: 0.24),
-                blurRadius: 18,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              initial,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF0D0D0D),
-              ),
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: _DashboardColors.panelSoft,
+          child: Text(
+            initial,
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _DashboardColors.textPrimary,
             ),
           ),
         ),
@@ -636,7 +583,7 @@ class _ModeChip extends StatelessWidget {
 class _GlassPanel extends StatelessWidget {
   const _GlassPanel({
     required this.child,
-    this.padding = const EdgeInsets.all(MfSpace.xl),
+    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;
@@ -644,26 +591,13 @@ class _GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _DashboardColors.panel,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _DashboardColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x5C000000),
-                blurRadius: 28,
-                offset: Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Padding(padding: padding, child: child),
-        ),
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: _DashboardColors.panel,
+        borderRadius: BorderRadius.circular(20),
       ),
+      child: child,
     );
   }
 }
@@ -675,47 +609,54 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FuturisticBalanceCard(
-      balanceLabel: summary.balanceLabel,
-      amountDisplay: summary.balance,
-      monthBadge: summary.monthLabel,
-      footer: Column(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _DashboardColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            summary.cashFlow >= 0
-                ? 'You are tracking ahead this month.'
-                : 'Spending is running higher than income this month.',
+            summary.balanceLabel,
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.78),
-              height: 1.35,
+              color: _DashboardColors.textSecondary,
             ),
           ),
-          const SizedBox(height: MfSpace.md),
+          const SizedBox(height: 8),
+          Text(
+            summary.balance,
+            style: GoogleFonts.inter(
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: _DashboardColors.textPrimary,
+              letterSpacing: -1,
+            ),
+          ),
+          const SizedBox(height: 24),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: _BalanceMetric(
-                  label: 'Income',
-                  value: _formatCurrency(summary.income),
+              Text(
+                '•••• •••• •••• 8924',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _DashboardColors.textSecondary,
+                  letterSpacing: 2,
                 ),
               ),
-              const SizedBox(width: MfSpace.sm),
-              Expanded(
-                child: _BalanceMetric(
-                  label: 'Spent',
-                  value: _formatCurrency(summary.expense),
-                ),
-              ),
-              const SizedBox(width: MfSpace.sm),
-              Expanded(
-                child: _BalanceMetric(
-                  label: 'Cash flow',
-                  value: _formatSignedCurrency(summary.cashFlow),
-                ),
-              ),
+              const Icon(Icons.credit_card_rounded, color: _DashboardColors.textSecondary, size: 24),
             ],
           ),
         ],
@@ -724,48 +665,53 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class _BalanceMetric extends StatelessWidget {
-  const _BalanceMetric({required this.label, required this.value});
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.title, required this.amount, required this.icon, required this.color});
 
-  final String label;
-  final String value;
+  final String title;
+  final String amount;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(MfSpace.md),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _DashboardColors.panel,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
               Text(
-                label,
+                title,
                 style: GoogleFonts.inter(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.62),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.96),
+                  fontWeight: FontWeight.w500,
+                  color: _DashboardColors.textSecondary,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              amount,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _DashboardColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -796,83 +742,42 @@ class _QuickActionsRow extends StatelessWidget {
   }
 }
 
-class _QuickActionButton extends StatefulWidget {
+class _QuickActionButton extends StatelessWidget {
   const _QuickActionButton({required this.action});
 
   final _QuickAction action;
 
   @override
-  State<_QuickActionButton> createState() => _QuickActionButtonState();
-}
-
-class _QuickActionButtonState extends State<_QuickActionButton> {
-  bool _hovered = false;
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
-      scale: _pressed
-          ? 0.96
-          : _hovered
-          ? 1.01
-          : 1,
-      duration: MfMotion.fast,
-      curve: MfMotion.curve,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.action.onTap,
-          onHover: (value) => setState(() => _hovered = value),
-          onHighlightChanged: (value) => setState(() => _pressed = value),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: MfSpace.sm),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: MfMotion.fast,
-                  curve: MfMotion.curve,
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: widget.action.accent.withValues(
-                      alpha: widget.action.accent == Colors.white ? 0.08 : 0.14,
-                    ),
-                    border: Border.all(
-                      color: widget.action.accent.withValues(
-                        alpha: widget.action.accent == Colors.white
-                            ? 0.14
-                            : 0.22,
-                      ),
-                    ),
-                    boxShadow: _pressed
-                        ? const []
-                        : [
-                            BoxShadow(
-                              color: widget.action.accent.withValues(
-                                alpha: 0.12,
-                              ),
-                              blurRadius: 18,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                  ),
-                  child: Icon(widget.action.icon, color: widget.action.accent),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: action.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: MfSpace.sm),
-                Text(
-                  widget.action.label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _DashboardColors.textPrimary,
-                  ),
+                child: Icon(action.icon, color: action.accent),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                action.label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: _DashboardColors.textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -953,93 +858,74 @@ class _TransactionsCard extends StatelessWidget {
   }
 }
 
-class _TransactionRow extends StatefulWidget {
+class _TransactionRow extends StatelessWidget {
   const _TransactionRow({required this.item});
 
   final _ActivityItem item;
 
   @override
-  State<_TransactionRow> createState() => _TransactionRowState();
-}
-
-class _TransactionRowState extends State<_TransactionRow> {
-  bool _hovered = false;
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final accent = widget.item.positive
+    final accent = item.positive
         ? _DashboardColors.positive
         : _DashboardColors.negative;
 
-    return AnimatedScale(
-      scale: _pressed
-          ? 0.99
-          : _hovered
-          ? 1.005
-          : 1,
-      duration: MfMotion.fast,
-      curve: MfMotion.curve,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {},
-          onHover: (value) => setState(() => _hovered = value),
-          onHighlightChanged: (value) => setState(() => _pressed = value),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: MfSpace.sm),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(widget.item.icon, color: accent),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: MfSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: _DashboardColors.textPrimary,
-                        ),
+                child: Icon(item.icon, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _DashboardColors.textPrimary,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.item.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _DashboardColors.textSecondary,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: _DashboardColors.textSecondary,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: MfSpace.md),
-                Text(
-                  _formatSignedCurrency(widget.item.amount),
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: accent,
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _formatSignedCurrency(item.amount),
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1048,35 +934,39 @@ class _TransactionRowState extends State<_TransactionRow> {
 }
 
 class _EmptyTransactionsCard extends StatelessWidget {
-  const _EmptyTransactionsCard();
+  const _EmptyTransactionsCard({required this.onRecordTap});
+
+  final VoidCallback onRecordTap;
 
   @override
   Widget build(BuildContext context) {
     return _GlassPanel(
       child: Column(
         children: [
+          const LedgerFintechEmptyIllustration(width: 168),
+          const SizedBox(height: MfSpace.lg),
           Container(
-            width: 60,
-            height: 60,
+            padding: const EdgeInsets.all(MfSpace.md),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(20),
+              color: MfPalette.accentSoftPurple.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(MfRadius.md),
             ),
             child: const Icon(
               Icons.receipt_long_rounded,
               color: _DashboardColors.limeSoft,
+              size: 26,
             ),
           ),
           const SizedBox(height: MfSpace.lg),
           Text(
             'No transactions yet',
-            style: GoogleFonts.inter(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
+            style: GoogleFonts.manrope(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: _DashboardColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: MfSpace.sm),
           Text(
             'Your latest payments and inflows will land here as soon as they are recorded.',
             textAlign: TextAlign.center,
@@ -1085,6 +975,12 @@ class _EmptyTransactionsCard extends StatelessWidget {
               height: 1.45,
               color: _DashboardColors.textSecondary,
             ),
+          ),
+          const SizedBox(height: MfSpace.xl),
+          FilledButton.icon(
+            onPressed: onRecordTap,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Record a transaction'),
           ),
         ],
       ),
