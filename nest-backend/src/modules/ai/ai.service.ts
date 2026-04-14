@@ -31,6 +31,12 @@ type InsightDraft = {
 };
 
 type AiProvider = 'groq' | 'gemini' | 'openai';
+type ReplyLang = 'en' | 'ml';
+type ActionType = 'create_expense' | 'update_expense' | 'delete_expense';
+type ActionProposal = {
+  type: ActionType;
+  payload: Record<string, unknown>;
+};
 
 @Injectable()
 export class AiService {
@@ -41,6 +47,16 @@ export class AiService {
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  private pickLang(message: string, preferred?: 'en' | 'ml' | 'auto'): ReplyLang {
+    if (preferred === 'en' || preferred === 'ml') return preferred;
+    // Malayalam Unicode block: 0D00–0D7F
+    return /[\u0D00-\u0D7F]/.test(message) ? 'ml' : 'en';
+  }
+
+  private tr(lang: ReplyLang, en: string, ml: string): string {
+    return lang === 'ml' ? ml : en;
+  }
 
   private async notifyInsightsReady(userId: string, stored: number) {
     if (stored <= 0) return;
@@ -865,9 +881,188 @@ export class AiService {
     return this.insightsLive(userId);
   }
 
+  private parseActionIntent(message: string): ActionProposal | null {
+    const text = message.toLowerCase();
+    const amountMatch =
+      text.match(/(?:rs|inr|₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)/i) ??
+      text.match(/amount\s*[:=]?\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+    const amount = amountMatch ? Number(amountMatch[1]) : undefined;
+    const categoryMatch = text.match(/category\s*[:=]?\s*([a-z ]{2,40})/i);
+    const categoryName = categoryMatch?.[1]?.trim();
+    const noteMatch = message.match(/note\s*[:=]?\s*([^,]+)$/i);
+    const note = noteMatch?.[1]?.trim();
+    const idMatch = message.match(/\b([a-z0-9]{18,36})\b/i);
+    const expenseId = idMatch?.[1];
+    const dateMatch = message.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+    const date = dateMatch?.[1];
+
+    if (/(delete|remove).*(expense)|expense.*(delete|remove)/i.test(text)) {
+      return { type: 'delete_expense', payload: { expenseId } };
+    }
+    if (/(edit|update|change).*(expense)|expense.*(edit|update|change)/i.test(text)) {
+      return {
+        type: 'update_expense',
+        payload: { expenseId, amount, categoryName, note, date },
+      };
+    }
+    if (/(add|create|new).*(expense)|expense.*(add|create|new)/i.test(text)) {
+      return {
+        type: 'create_expense',
+        payload: { amount, categoryName, note, date },
+      };
+    }
+    return null;
+  }
+
+  private missingForProposal(p: ActionProposal): string[] {
+    if (p.type === 'create_expense') {
+      const miss: string[] = [];
+      if (!p.payload['amount']) miss.push('amount');
+      if (!p.payload['categoryName']) miss.push('category');
+      return miss;
+    }
+    if (p.type === 'update_expense') {
+      const miss: string[] = [];
+      if (!p.payload['expenseId']) miss.push('expenseId');
+      const hasField =
+        p.payload['amount'] !== undefined ||
+        p.payload['categoryName'] !== undefined ||
+        p.payload['note'] !== undefined ||
+        p.payload['date'] !== undefined;
+      if (!hasField) miss.push('fieldsToUpdate');
+      return miss;
+    }
+    return p.payload['expenseId'] ? [] : ['expenseId'];
+  }
+
+  private async resolveExpenseCategoryId(userId: string, categoryName: string): Promise<string | null> {
+    const rows = await this.prisma.category.findMany({
+      where: { userId, type: CategoryType.expense },
+      select: { id: true, name: true },
+      take: 200,
+    });
+    const q = categoryName.trim().toLowerCase();
+    const exact = rows.find((r) => r.name.trim().toLowerCase() === q);
+    if (exact) return exact.id;
+    const partial = rows.find((r) => r.name.trim().toLowerCase().includes(q));
+    return partial?.id ?? null;
+  }
+
+  private async userWorkspace(userId: string): Promise<string> {
+    const ws =
+      (await this.prisma.workspaceMember.findFirst({
+        where: { userId },
+        select: { workspaceId: true },
+      })) ??
+      (await this.prisma.workspace.findFirst({
+        where: { ownerUserId: userId },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      }).then((x) => (x ? { workspaceId: x.id } : null)));
+    if (!ws) throw new BadRequestException('No workspace found for user.');
+    return ws.workspaceId;
+  }
+
+  private async executeProposal(userId: string, proposal: ActionProposal, lang: ReplyLang) {
+    const workspaceId = await this.userWorkspace(userId);
+    if (proposal.type === 'create_expense') {
+      const amount = Number(proposal.payload['amount']);
+      const categoryName = String(proposal.payload['categoryName'] ?? '');
+      if (!amount || !categoryName) throw new BadRequestException('amount and category are required');
+      const categoryId = await this.resolveExpenseCategoryId(userId, categoryName);
+      if (!categoryId) {
+        throw new BadRequestException(
+          this.tr(lang, `Category "${categoryName}" not found.`, `"${categoryName}" എന്ന category കണ്ടെത്താനായില്ല.`),
+        );
+      }
+      const created = await this.prisma.expense.create({
+        data: {
+          userId,
+          workspaceId,
+          enteredByUserId: userId,
+          amount,
+          categoryId,
+          date: proposal.payload['date'] ? new Date(String(proposal.payload['date'])) : new Date(),
+          note: proposal.payload['note'] ? String(proposal.payload['note']) : null,
+        },
+      });
+      return this.tr(
+        lang,
+        `Done. Expense created: ${created.amount} (id: ${created.id}).`,
+        `ശരി. ചെലവ് സൃഷ്ടിച്ചു: ${created.amount} (id: ${created.id}).`,
+      );
+    }
+
+    if (proposal.type === 'update_expense') {
+      const expenseId = String(proposal.payload['expenseId'] ?? '');
+      if (!expenseId) throw new BadRequestException('expenseId is required');
+      const data: Prisma.ExpenseUncheckedUpdateManyInput = {};
+      if (proposal.payload['amount'] !== undefined) data.amount = Number(proposal.payload['amount']);
+      if (proposal.payload['note'] !== undefined) data.note = String(proposal.payload['note']);
+      if (proposal.payload['date'] !== undefined) data.date = new Date(String(proposal.payload['date']));
+      if (proposal.payload['categoryName'] !== undefined) {
+        const categoryId = await this.resolveExpenseCategoryId(userId, String(proposal.payload['categoryName']));
+        if (!categoryId) throw new BadRequestException('category not found');
+        data.categoryId = categoryId;
+      }
+      const updated = await this.prisma.expense.updateMany({
+        where: { id: expenseId, userId, workspaceId },
+        data: data as Prisma.ExpenseUpdateManyMutationInput,
+      });
+      if (updated.count === 0) throw new BadRequestException('expense not found in your workspace');
+      return this.tr(lang, `Done. Expense ${expenseId} updated.`, `ശരി. ചെലവ് ${expenseId} അപ്ഡേറ്റ് ചെയ്തു.`);
+    }
+
+    const expenseId = String(proposal.payload['expenseId'] ?? '');
+    if (!expenseId) throw new BadRequestException('expenseId is required');
+    const deleted = await this.prisma.expense.deleteMany({ where: { id: expenseId, userId, workspaceId } });
+    if (deleted.count === 0) throw new BadRequestException('expense not found in your workspace');
+    return this.tr(lang, `Done. Expense ${expenseId} deleted.`, `ശരി. ചെലവ് ${expenseId} ഇല്ലാതാക്കി.`);
+  }
+
   async chat(userId: string, dto: AiChatDto) {
-    const trimmed = dto.message?.trim();
-    if (!trimmed) throw new BadRequestException('message is required');
+    const trimmed = dto.message?.trim() ?? '';
+    if (!trimmed && !dto.actionConfirmation) throw new BadRequestException('message is required');
+    const lang = this.pickLang(trimmed, dto.lang);
+
+    if (dto.actionConfirmation) {
+      if (!dto.actionConfirmation.approve) {
+        return {
+          reply: this.tr(lang, 'Action cancelled.', 'പ്രവർത്തനം റദ്ദാക്കി.'),
+          source: 'heuristic' as const,
+        };
+      }
+      const proposal = dto.actionConfirmation.proposal as ActionProposal;
+      const reply = await this.executeProposal(userId, proposal, lang);
+      return { reply, source: 'heuristic' as const };
+    }
+
+    const action = this.parseActionIntent(trimmed);
+    if (action) {
+      const missing = this.missingForProposal(action);
+      if (missing.length) {
+        return {
+          reply: this.tr(
+            lang,
+            `I can do that. I still need: ${missing.join(', ')}.`,
+            `അത് ചെയ്യാം. പക്ഷേ ഇത് കൂടി വേണം: ${missing.join(', ')}.`,
+          ),
+          source: 'heuristic' as const,
+          actionProposal: action,
+          requiresConfirmation: false,
+        };
+      }
+      return {
+        reply: this.tr(
+          lang,
+          `Please confirm: ${action.type.replace('_', ' ')}. I will update real app data.`,
+          `ദയവായി സ്ഥിരീകരിക്കുക: ${action.type.replace('_', ' ')}. ഞാൻ യഥാർത്ഥ app data അപ്ഡേറ്റ് ചെയ്യും.`,
+        ),
+        source: 'heuristic' as const,
+        actionProposal: action,
+        requiresConfirmation: true,
+      };
+    }
 
     const context = await this.buildFinancialContext(userId);
     if (!this.hasAiProvider()) {

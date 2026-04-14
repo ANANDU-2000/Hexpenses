@@ -38,6 +38,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
   final _scrollChat = ScrollController();
   final List<_ChatTurn> _chatBubbles = [];
   final List<Map<String, String>> _apiHistory = [];
+  Map<String, dynamic>? _pendingActionProposal;
   bool _sending = false;
 
   @override
@@ -74,6 +75,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
       final result = await api.chat(
         trimmed,
         history: _apiHistory.isEmpty ? null : List.from(_apiHistory),
+        lang: Localizations.localeOf(context).languageCode == 'ml' ? 'ml' : 'auto',
       );
       _apiHistory.add({'role': 'user', 'content': trimmed});
       _apiHistory.add({'role': 'assistant', 'content': result.reply});
@@ -82,6 +84,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
       }
       if (mounted) {
         setState(() {
+          _pendingActionProposal = result.actionProposal;
           _chatBubbles.add(
             _ChatTurn(
               fromUser: false,
@@ -98,6 +101,58 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
               fromUser: false,
               text:
                   e.response?.data?.toString() ?? e.message ?? 'Request failed',
+            ),
+          );
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+      _scrollChatToBottom();
+    }
+  }
+
+  Future<void> _confirmPendingAction(bool approve) async {
+    final proposal = _pendingActionProposal;
+    if (proposal == null || _sending) return;
+    setState(() {
+      _sending = true;
+      _chatBubbles.add(
+        _ChatTurn(
+          fromUser: true,
+          text: approve ? 'Confirm action' : 'Cancel action',
+        ),
+      );
+    });
+    _scrollChatToBottom();
+    try {
+      final api = ref.read(insightsApiProvider);
+      final result = await api.chat(
+        approve ? 'confirm' : 'cancel',
+        history: _apiHistory.isEmpty ? null : List.from(_apiHistory),
+        lang: Localizations.localeOf(context).languageCode == 'ml' ? 'ml' : 'auto',
+        actionConfirmation: {
+          'proposal': proposal,
+          'approve': approve,
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _pendingActionProposal = result.actionProposal;
+          _chatBubbles.add(
+            _ChatTurn(
+              fromUser: false,
+              text: result.reply.isEmpty ? '(No reply)' : result.reply,
+            ),
+          );
+        });
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _chatBubbles.add(
+            _ChatTurn(
+              fromUser: false,
+              text: e.response?.data?.toString() ?? e.message ?? 'Request failed',
             ),
           );
         });
@@ -166,8 +221,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
             messageCtrl: _messageCtrl,
             scrollController: _scrollChat,
             chatBubbles: _chatBubbles,
+            pendingActionProposal: _pendingActionProposal,
             sending: _sending,
             onSend: _send,
+            onActionDecision: _confirmPendingAction,
           ),
         ],
       ),
@@ -354,15 +411,19 @@ class _ChatTab extends StatelessWidget {
     required this.messageCtrl,
     required this.scrollController,
     required this.chatBubbles,
+    required this.pendingActionProposal,
     required this.sending,
     required this.onSend,
+    required this.onActionDecision,
   });
 
   final TextEditingController messageCtrl;
   final ScrollController scrollController;
   final List<_ChatTurn> chatBubbles;
+  final Map<String, dynamic>? pendingActionProposal;
   final bool sending;
   final void Function(String) onSend;
+  final Future<void> Function(bool approve) onActionDecision;
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +470,10 @@ class _ChatTab extends StatelessWidget {
               ),
               const SizedBox(height: MfSpace.lg),
               ...chatBubbles.map((m) => _chatBubble(context, m)),
+              if (pendingActionProposal != null) ...[
+                const SizedBox(height: MfSpace.sm),
+                _actionConfirmCard(context, pendingActionProposal!),
+              ],
               if (sending)
                 const Padding(
                   padding: EdgeInsets.all(MfSpace.md),
@@ -514,6 +579,50 @@ class _ChatTab extends StatelessWidget {
           m.text,
           style: GoogleFonts.inter(fontSize: 14, color: fg, height: 1.4),
         ),
+      ),
+    );
+  }
+
+  Widget _actionConfirmCard(BuildContext context, Map<String, dynamic> proposal) {
+    final cs = Theme.of(context).colorScheme;
+    final type = proposal['type']?.toString() ?? 'action';
+    return Container(
+      margin: const EdgeInsets.only(bottom: MfSpace.md),
+      padding: const EdgeInsets.all(MfSpace.md),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(MfRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pending action: $type',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: MfSpace.xs),
+          Text(
+            proposal['payload']?.toString() ?? '',
+            style: GoogleFonts.inter(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.75)),
+          ),
+          const SizedBox(height: MfSpace.sm),
+          Row(
+            children: [
+              FilledButton(
+                onPressed: sending ? null : () => onActionDecision(true),
+                child: const Text('Confirm'),
+              ),
+              const SizedBox(width: MfSpace.sm),
+              OutlinedButton(
+                onPressed: sending ? null : () => onActionDecision(false),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -49,21 +49,33 @@ class InsightsApi {
     );
   }
 
-  Future<({String reply, String? source})> chat(
+  Future<
+      ({
+        String reply,
+        String? source,
+        Map<String, dynamic>? actionProposal,
+        bool requiresConfirmation,
+      })> chat(
     String message, {
     List<Map<String, String>>? history,
+    String lang = 'auto',
+    Map<String, dynamic>? actionConfirmation,
   }) async {
     final res = await _dio.post<dynamic>(
       '/ai/chat',
       data: {
         'message': message,
+        'lang': lang,
         if (history != null && history.isNotEmpty) 'history': history,
+        if (actionConfirmation != null) 'actionConfirmation': actionConfirmation,
       },
     );
     final data = unwrapApiMap(res.data) ?? <String, dynamic>{};
     return (
       reply: data['reply']?.toString() ?? '',
       source: data['source'] as String?,
+      actionProposal: (data['actionProposal'] as Map?)?.cast<String, dynamic>(),
+      requiresConfirmation: data['requiresConfirmation'] == true,
     );
   }
 }
