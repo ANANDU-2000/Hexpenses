@@ -69,7 +69,7 @@ class AccountsApi {
       data: {
         'name': name,
         'type': type,
-        'initialBalance': ?initialBalance,
+        if (initialBalance != null) 'initialBalance': initialBalance,
       },
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# Next.js / framework build output (do not commit)
+.next/
+admin-panel/.next/
 nest-backend/uploads/
 .venv/
 __pycache__/
@@ -11,4 +14,5 @@ backend/media/
 .env.local
 *.log
 flutter-app/analyze_out.txt
+flutter-app/build/
 .DS_Store

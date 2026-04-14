@@ -37,12 +37,10 @@ class WhatsappApi {
     String? phoneE164,
   }) async {
     final data = <String, dynamic>{
-      'dailySummary': ?dailySummary,
-      'monthlyReport': ?monthlyReport,
-      'alerts': ?alerts,
-      'phoneE164': ?(phoneE164 != null && phoneE164.isNotEmpty
-          ? phoneE164
-          : null),
+      if (dailySummary != null) 'dailySummary': dailySummary,
+      if (monthlyReport != null) 'monthlyReport': monthlyReport,
+      if (alerts != null) 'alerts': alerts,
+      if (phoneE164 != null && phoneE164.isNotEmpty) 'phoneE164': phoneE164,
     };
     await _dio.patch<dynamic>('/whatsapp/preferences', data: data);
   }

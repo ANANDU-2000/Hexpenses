@@ -1,0 +1,68 @@
+# User PWA only: builds flutter-app and (optionally) deploys static output to Vercel.
+#
+# GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
+#   VERCEL_TOKEN        — from Vercel → Settings → Tokens
+#   VERCEL_ORG_ID       — Vercel project → Settings → General → Team ID
+#   VERCEL_PROJECT_ID   — same page → Project ID
+#
+# If VERCEL_TOKEN is not set under Secrets, the deploy job is skipped (build still runs).
+
+name: Flutter web PWA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter-app/**'
+      - '.github/workflows/flutter-web-vercel.yml'
+  workflow_dispatch: {}
+
+env:
+  API_BASE: https://hexpenses-api.onrender.com/api
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build web (release)
+        run: flutter build web --release --dart-define=API_BASE=${{ env.API_BASE }}
+
+      - name: Include Vercel SPA rewrites in output
+        run: cp vercel.json build/web/vercel.json
+
+      - name: Upload build/web
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web
+          path: flutter-app/build/web
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VERCEL_TOKEN != '' }}
+    steps:
+      - name: Download build/web
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web
+          path: out
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel@33 deploy out --prod --yes --token "$VERCEL_TOKEN"

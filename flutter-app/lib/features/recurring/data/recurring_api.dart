@@ -41,7 +41,7 @@ class RecurringApi {
         'nextDate': nextDateIso,
         'categoryId': categoryId,
         'title': title,
-        'note': ?note,
+        if (note != null) 'note': note,
       },
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
