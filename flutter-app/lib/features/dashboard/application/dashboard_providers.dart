@@ -5,8 +5,13 @@ import '../../../core/offline/no_api_dashboard.dart';
 import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../data/reports_api.dart';
 
-/// Year + month (1–12) for MVP expense report charts.
-typedef ExpenseMvpMonth = ({int year, int month});
+/// Calendar month and/or inclusive YYYY-MM-DD range for expense analytics API.
+typedef ExpenseMvpQuery = ({
+  int year,
+  int month,
+  String? fromYmd,
+  String? toYmd,
+});
 
 final monthlySummaryProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
   (ref) async {
@@ -43,17 +48,21 @@ final taxSummaryProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
 });
 
 final expenseMvpProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>, ExpenseMvpMonth>((ref, m) async {
+    .family<Map<String, dynamic>, ExpenseMvpQuery>((ref, m) async {
       if (kNoApiMode) {
         return buildOfflineExpenseMvp(
           ref.watch(ledgerDatabaseProvider),
           m.year,
           m.month,
+          fromYmd: m.fromYmd,
+          toYmd: m.toYmd,
         );
       }
       return ref.watch(reportsApiProvider).expenseMvp(
             year: m.year,
             month: m.month,
+            fromYmd: m.fromYmd,
+            toYmd: m.toYmd,
             trendMonths: 12,
           );
     });

@@ -40,6 +40,9 @@ export class ReportsController {
     @Query("year") year?: string,
     @Query("month") month?: string,
     @Query("trendMonths") trendMonths?: string,
+    /** Inclusive YYYY-MM-DD range; when both set, overrides calendar month. */
+    @Query("from") from?: string,
+    @Query("to") to?: string,
   ) {
     const n = trendMonths ? Number(trendMonths) : 12;
     return this.reports.expenseMvp(
@@ -47,6 +50,8 @@ export class ReportsController {
       year,
       month,
       Number.isFinite(n) ? n : 12,
+      from,
+      to,
     );
   }
 

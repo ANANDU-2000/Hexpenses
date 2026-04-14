@@ -38,11 +38,14 @@ class ReportsApi {
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
 
-  /// MVP: chart-ready category month breakdown + monthly expense trend + vehicle placeholder.
+  /// MVP: chart-ready category breakdown + monthly expense trend + vehicle placeholder.
+  /// Optional [fromYmd]/[toYmd] (`YYYY-MM-DD`, inclusive) override calendar month.
   Future<Map<String, dynamic>> expenseMvp({
     int? year,
     int? month,
     int trendMonths = 12,
+    String? fromYmd,
+    String? toYmd,
   }) async {
     final res = await _dio.get<dynamic>(
       '/reports/expense-mvp',
@@ -50,6 +53,8 @@ class ReportsApi {
         if (year != null) 'year': year.toString(),
         if (month != null) 'month': month.toString(),
         'trendMonths': trendMonths.toString(),
+        if (fromYmd != null && fromYmd.isNotEmpty) 'from': fromYmd,
+        if (toYmd != null && toYmd.isNotEmpty) 'to': toYmd,
       },
     );
     return unwrapApiMap(res.data) ?? <String, dynamic>{};

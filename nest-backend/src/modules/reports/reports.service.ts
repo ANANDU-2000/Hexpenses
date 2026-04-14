@@ -29,6 +29,55 @@ export class ReportsService {
     return { start, end, label: `${y}-${m}` };
   }
 
+  /** Local midnight YYYY-MM-DD */
+  private parseYmdLocal(ymd: string): Date | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(y, mo - 1, d, 0, 0, 0, 0);
+    if (
+      dt.getFullYear() !== y ||
+      dt.getMonth() !== mo - 1 ||
+      dt.getDate() !== d
+    ) {
+      return null;
+    }
+    return dt;
+  }
+
+  private dayAfterStartOf(d: Date): Date {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+  }
+
+  /**
+   * Calendar month (year/month) OR inclusive YYYY-MM-DD range (from/to).
+   * Expenses use `date >= start` and `date < endExclusive`.
+   */
+  private resolveExpenseMvpWindow(
+    yearStr: string | undefined,
+    monthStr: string | undefined,
+    fromStr: string | undefined,
+    toStr: string | undefined,
+    now = new Date(),
+  ): { start: Date; endExclusive: Date; label: string } {
+    if (fromStr?.trim() && toStr?.trim()) {
+      const s = this.parseYmdLocal(fromStr.trim());
+      const t = this.parseYmdLocal(toStr.trim());
+      if (s && t && s <= t) {
+        return {
+          start: s,
+          endExclusive: this.dayAfterStartOf(t),
+          label: `${fromStr.trim()} → ${toStr.trim()}`,
+        };
+      }
+    }
+    const fb = this.parseYearMonth(yearStr, monthStr, now);
+    return { start: fb.start, endExclusive: fb.end, label: fb.label };
+  }
+
   async monthlyIncomeReport(
     ctx: WorkspaceContext,
     yearStr?: string,
@@ -300,9 +349,21 @@ export class ReportsService {
    * Chart-ready MVP payload: lifetime spend, month-scoped category pie data,
    * expense-only monthly bars, placeholders for recurring / vehicle / upcoming.
    */
-  async expenseMvp(ctx: WorkspaceContext, yearStr?: string, monthStr?: string, trendMonths = 12) {
+  async expenseMvp(
+    ctx: WorkspaceContext,
+    yearStr?: string,
+    monthStr?: string,
+    trendMonths = 12,
+    fromStr?: string,
+    toStr?: string,
+  ) {
     assertWorkspacePermission(ctx.role, "expense:read");
-    const { start, end, label } = this.parseYearMonth(yearStr, monthStr);
+    const { start, endExclusive, label } = this.resolveExpenseMvpWindow(
+      yearStr,
+      monthStr,
+      fromStr,
+      toStr,
+    );
     const months = Math.min(24, Math.max(1, Math.floor(trendMonths)));
 
     const baseWhere = {
@@ -317,7 +378,7 @@ export class ReportsService {
         _sum: { amount: true },
       }),
       this.prisma.expense.findMany({
-        where: { ...baseWhere, date: { gte: start, lt: end } },
+        where: { ...baseWhere, date: { gte: start, lt: endExclusive } },
         select: {
           amount: true,
           categoryId: true,

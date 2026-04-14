@@ -127,12 +127,36 @@ Map<String, dynamic> offlineTaxSummaryPlaceholder() => {
 Future<Map<String, dynamic>> buildOfflineExpenseMvp(
   LedgerDatabase db,
   int year,
-  int month,
-) async {
+  int month, {
+  String? fromYmd,
+  String? toYmd,
+}) async {
   final expenses = await _loadExpensePayloads(db);
   double totalAll = 0;
   for (final e in expenses) {
     totalAll += _parseAmount(e['amount']);
+  }
+
+  DateTime? rangeStart;
+  DateTime? rangeEndExcl;
+  if (fromYmd != null &&
+      toYmd != null &&
+      fromYmd.isNotEmpty &&
+      toYmd.isNotEmpty) {
+    rangeStart = DateTime.tryParse('${fromYmd}T00:00:00');
+    final toD = DateTime.tryParse('${toYmd}T00:00:00');
+    if (toD != null) {
+      rangeEndExcl = toD.add(const Duration(days: 1));
+    }
+  }
+
+  bool inPeriod(DateTime d) {
+    final rs = rangeStart;
+    final re = rangeEndExcl;
+    if (rs != null && re != null) {
+      return !d.isBefore(rs) && d.isBefore(re);
+    }
+    return d.year == year && d.month == month;
   }
 
   final byCat = <String, double>{};
@@ -140,19 +164,18 @@ Future<Map<String, dynamic>> buildOfflineExpenseMvp(
   double monthTotal = 0;
   for (final e in expenses) {
     final d = DateTime.tryParse(e['date']?.toString() ?? '');
-    if (d != null && d.year == year && d.month == month) {
-      monthTotal += _parseAmount(e['amount']);
-      final cat = e['category'];
-      String? cid;
-      String name = 'Other';
-      if (cat is Map) {
-        cid = cat['id']?.toString();
-        name = cat['name']?.toString() ?? name;
-      }
-      cid ??= 'unknown';
-      catNames[cid] = name;
-      byCat[cid] = (byCat[cid] ?? 0) + _parseAmount(e['amount']);
+    if (d == null || !inPeriod(d)) continue;
+    monthTotal += _parseAmount(e['amount']);
+    final cat = e['category'];
+    String? cid;
+    String name = 'Other';
+    if (cat is Map) {
+      cid = cat['id']?.toString();
+      name = cat['name']?.toString() ?? name;
     }
+    cid ??= 'unknown';
+    catNames[cid] = name;
+    byCat[cid] = (byCat[cid] ?? 0) + _parseAmount(e['amount']);
   }
 
   final breakdown = byCat.entries
@@ -189,8 +212,12 @@ Future<Map<String, dynamic>> buildOfflineExpenseMvp(
     barValues.add(v);
   }
 
+  final periodLabel = rangeStart != null && toYmd != null
+      ? '$fromYmd → $toYmd'
+      : '$year-$month';
+
   return {
-    'period': '$year-$month',
+    'period': periodLabel,
     'totalSpentAllTime': totalAll.toStringAsFixed(2),
     'thisMonthExpenses': monthTotal.toStringAsFixed(2),
     'categoryBreakdownMonth': breakdown,

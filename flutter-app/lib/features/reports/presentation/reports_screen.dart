@@ -20,12 +20,52 @@ class ReportsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
+enum _QuickRange { none, lastMonth, last90, custom }
+
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String? _selectedMonthKey;
   int? _highlightedPieIndex;
+  _QuickRange _quickRange = _QuickRange.none;
+  DateTime? _customStart;
+  DateTime? _customEnd;
 
   Future<void> _refresh() async {
     await ref.read(ledgerSyncServiceProvider).pullAndFlush();
+  }
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final initial = _customStart != null && _customEnd != null
+        ? DateTimeRange(start: _customStart!, end: _customEnd!)
+        : DateTimeRange(
+            start: now.subtract(const Duration(days: 29)),
+            end: now,
+          );
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      initialDateRange: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF49D6FF),
+              surface: Color(0xFF121722),
+              onSurface: Color(0xFFF4F7FF),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (range == null || !mounted) return;
+    setState(() {
+      _quickRange = _QuickRange.custom;
+      _customStart = range.start;
+      _customEnd = range.end;
+      _highlightedPieIndex = null;
+    });
   }
 
   @override
@@ -57,15 +97,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     ? _selectedMonthKey!
                     : monthKeys.first;
                 final monthLabel = _formatMonthLabel(selectedMonthKey);
-                final selectedEntries = entries
-                    .where((entry) => entry.monthKey == selectedMonthKey)
-                    .toList();
-
-                final ym = _yearMonthFromKey(selectedMonthKey);
+                final ym = _buildExpenseQuery(
+                  selectedMonthKey: selectedMonthKey,
+                  quick: _quickRange,
+                  customStart: _customStart,
+                  customEnd: _customEnd,
+                );
+                final loadingPeriodSubtitle = _periodSubtitleBeforeLoad(
+                  selectedMonthKey: selectedMonthKey,
+                  quick: _quickRange,
+                  customStart: _customStart,
+                  customEnd: _customEnd,
+                );
                 final mvpAsync = ref.watch(expenseMvpProvider(ym));
 
                 return mvpAsync.when(
                   data: (mvp) {
+                    final periodLabel = () {
+                      final p = mvp['period']?.toString().trim();
+                      if (p != null && p.isNotEmpty) return p;
+                      return monthLabel;
+                    }();
+                    final selectedEntries = entries
+                        .where((e) => _entryMatchesQuery(e, ym))
+                        .toList()
+                      ..sort((a, b) => b.sortDate.compareTo(a.sortDate));
+
                     final pie = mvp['chart'] is Map
                         ? Map<String, dynamic>.from(mvp['chart']['pie'] as Map)
                         : <String, dynamic>{};
@@ -131,24 +188,49 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             canPop: canPop,
                             monthKeys: monthKeys,
                             selectedMonthKey: selectedMonthKey,
+                            periodSubtitle: periodLabel,
+                            quickRange: _quickRange,
                             onBack: () => Navigator.of(context).maybePop(),
                             onMonthChanged: (value) {
                               if (value == null) return;
                               setState(() {
                                 _selectedMonthKey = value;
+                                _quickRange = _QuickRange.none;
                                 _highlightedPieIndex = null;
                               });
+                            },
+                            onThisMonth: () {
+                              setState(() {
+                                _selectedMonthKey = _monthKey(DateTime.now());
+                                _quickRange = _QuickRange.none;
+                                _highlightedPieIndex = null;
+                              });
+                            },
+                            onLastMonth: () {
+                              setState(() {
+                                _quickRange = _QuickRange.lastMonth;
+                                _highlightedPieIndex = null;
+                              });
+                            },
+                            onLast90: () {
+                              setState(() {
+                                _quickRange = _QuickRange.last90;
+                                _highlightedPieIndex = null;
+                              });
+                            },
+                            onCustomRange: () {
+                              _pickCustomRange();
                             },
                           ),
                           const SizedBox(height: MfSpace.lg),
                           _MvpSummaryStrip(
-                            monthLabel: monthLabel,
+                            periodLabel: periodLabel,
                             monthTotal: monthTotal,
                             allTime: allTime,
                           ),
                           const SizedBox(height: MfSpace.xl),
                           _MvpCategoryPieCard(
-                            monthLabel: monthLabel,
+                            monthLabel: periodLabel,
                             labels: pieLabels,
                             values: pieValues,
                             monthTotal: monthTotal,
@@ -169,7 +251,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           const SizedBox(height: MfSpace.xl),
                           if (breakdown.isEmpty)
                             _EmptyAnalyticsCard(
-                              monthLabel: monthLabel,
+                              monthLabel: periodLabel,
                               onAddExpense: () {
                                 Navigator.of(context).push(
                                   LedgerPageRoutes.fadeSlide<void>(
@@ -180,7 +262,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             )
                           else ...[
                             Text(
-                              'Categories (this month)',
+                              'Categories',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -189,20 +271,29 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               ),
                             ),
                             const SizedBox(height: MfSpace.md),
-                            ...breakdown.map(
-                              (row) => Padding(
-                                padding: const EdgeInsets.only(bottom: MfSpace.sm),
-                                child: _MvpCategoryRow(
-                                  name: row['name']?.toString() ?? '',
-                                  total: row['total']?.toString() ?? '0',
-                                ),
-                              ),
+                            ...breakdown.asMap().entries.map(
+                              (e) {
+                                final i = e.key;
+                                final row = e.value;
+                                final catTotal =
+                                    double.tryParse(row['total']?.toString() ?? '0') ?? 0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                                  child: _MvpCategoryRow(
+                                    name: row['name']?.toString() ?? '',
+                                    total: row['total']?.toString() ?? '0',
+                                    periodTotal: monthTotal,
+                                    categoryAmount: catTotal,
+                                    color: _mvpPiePalette[i % _mvpPiePalette.length],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                           if (selectedEntries.isNotEmpty) ...[
                             const SizedBox(height: MfSpace.xl),
                             Text(
-                              'Recent in month',
+                              'Recent in period',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -237,10 +328,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         canPop: canPop,
                         monthKeys: monthKeys,
                         selectedMonthKey: selectedMonthKey,
+                        periodSubtitle: loadingPeriodSubtitle,
+                        quickRange: _quickRange,
                         onBack: () => Navigator.of(context).maybePop(),
                         onMonthChanged: (value) {
                           if (value == null) return;
-                          setState(() => _selectedMonthKey = value);
+                          setState(() {
+                            _selectedMonthKey = value;
+                            _quickRange = _QuickRange.none;
+                          });
+                        },
+                        onThisMonth: () {
+                          setState(() {
+                            _selectedMonthKey = _monthKey(DateTime.now());
+                            _quickRange = _QuickRange.none;
+                          });
+                        },
+                        onLastMonth: () {
+                          setState(() => _quickRange = _QuickRange.lastMonth);
+                        },
+                        onLast90: () {
+                          setState(() => _quickRange = _QuickRange.last90);
+                        },
+                        onCustomRange: () {
+                          _pickCustomRange();
                         },
                       ),
                       const SizedBox(height: MfSpace.xl),
@@ -260,10 +371,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         canPop: canPop,
                         monthKeys: monthKeys,
                         selectedMonthKey: selectedMonthKey,
+                        periodSubtitle: loadingPeriodSubtitle,
+                        quickRange: _quickRange,
                         onBack: () => Navigator.of(context).maybePop(),
                         onMonthChanged: (value) {
                           if (value == null) return;
-                          setState(() => _selectedMonthKey = value);
+                          setState(() {
+                            _selectedMonthKey = value;
+                            _quickRange = _QuickRange.none;
+                          });
+                        },
+                        onThisMonth: () {
+                          setState(() {
+                            _selectedMonthKey = _monthKey(DateTime.now());
+                            _quickRange = _QuickRange.none;
+                          });
+                        },
+                        onLastMonth: () {
+                          setState(() => _quickRange = _QuickRange.lastMonth);
+                        },
+                        onLast90: () {
+                          setState(() => _quickRange = _QuickRange.last90);
+                        },
+                        onCustomRange: () {
+                          _pickCustomRange();
                         },
                       ),
                       const SizedBox(height: MfSpace.xl),
@@ -274,6 +405,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               },
               loading: () => _AnalyticsScaffoldState(
                 canPop: canPop,
+                quickRange: _quickRange,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(
@@ -308,8 +440,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       canPop: canPop,
                       monthKeys: const [],
                       selectedMonthKey: null,
+                      periodSubtitle: 'Connect to load analytics',
+                      quickRange: _quickRange,
                       onBack: () => Navigator.of(context).maybePop(),
                       onMonthChanged: (_) {},
+                      onThisMonth: () {},
+                      onLastMonth: () {},
+                      onLast90: () {},
+                      onCustomRange: () {},
                     ),
                     const SizedBox(height: MfSpace.xl),
                     _ErrorAnalyticsCard(message: error.toString()),
@@ -324,13 +462,112 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
-ExpenseMvpMonth _yearMonthFromKey(String key) {
+String _ymd(DateTime d) {
+  final l = d.toLocal();
+  final y = l.year.toString().padLeft(4, '0');
+  final m = l.month.toString().padLeft(2, '0');
+  final day = l.day.toString().padLeft(2, '0');
+  return '$y-$m-$day';
+}
+
+ExpenseMvpQuery _queryPickMonth(String key) {
   final p = key.split('-');
   if (p.length < 2) {
     final n = DateTime.now();
-    return (year: n.year, month: n.month);
+    return (year: n.year, month: n.month, fromYmd: null, toYmd: null);
   }
-  return (year: int.parse(p[0]), month: int.parse(p[1]));
+  return (
+    year: int.parse(p[0]),
+    month: int.parse(p[1]),
+    fromYmd: null,
+    toYmd: null,
+  );
+}
+
+ExpenseMvpQuery _buildExpenseQuery({
+  required String selectedMonthKey,
+  required _QuickRange quick,
+  DateTime? customStart,
+  DateTime? customEnd,
+}) {
+  final now = DateTime.now();
+  switch (quick) {
+    case _QuickRange.none:
+      return _queryPickMonth(selectedMonthKey);
+    case _QuickRange.lastMonth:
+      final firstThisMonth = DateTime(now.year, now.month, 1);
+      final lastDayPrev = firstThisMonth.subtract(const Duration(days: 1));
+      final start = DateTime(lastDayPrev.year, lastDayPrev.month, 1);
+      return (
+        year: lastDayPrev.year,
+        month: lastDayPrev.month,
+        fromYmd: _ymd(start),
+        toYmd: _ymd(lastDayPrev),
+      );
+    case _QuickRange.last90:
+      final end = DateTime(now.year, now.month, now.day);
+      final start = end.subtract(const Duration(days: 89));
+      return (
+        year: end.year,
+        month: end.month,
+        fromYmd: _ymd(start),
+        toYmd: _ymd(end),
+      );
+    case _QuickRange.custom:
+      if (customStart == null || customEnd == null) {
+        return _queryPickMonth(selectedMonthKey);
+      }
+      var a = DateTime(
+        customStart.year,
+        customStart.month,
+        customStart.day,
+      );
+      var b = DateTime(customEnd.year, customEnd.month, customEnd.day);
+      if (a.isAfter(b)) {
+        final t = a;
+        a = b;
+        b = t;
+      }
+      return (
+        year: b.year,
+        month: b.month,
+        fromYmd: _ymd(a),
+        toYmd: _ymd(b),
+      );
+  }
+}
+
+bool _entryMatchesQuery(_ExpenseEntry entry, ExpenseMvpQuery q) {
+  final d = entry.date;
+  if (d == null) return false;
+  final dl = DateTime(d.year, d.month, d.day);
+  if (q.fromYmd != null && q.toYmd != null) {
+    final fs = DateTime.tryParse('${q.fromYmd}T00:00:00');
+    final te = DateTime.tryParse('${q.toYmd}T00:00:00');
+    if (fs != null && te != null) {
+      final endExcl = te.add(const Duration(days: 1));
+      return !dl.isBefore(fs) && dl.isBefore(endExcl);
+    }
+  }
+  return dl.year == q.year && dl.month == q.month;
+}
+
+String _periodSubtitleBeforeLoad({
+  required String selectedMonthKey,
+  required _QuickRange quick,
+  DateTime? customStart,
+  DateTime? customEnd,
+}) {
+  final q = _buildExpenseQuery(
+    selectedMonthKey: selectedMonthKey,
+    quick: quick,
+    customStart: customStart,
+    customEnd: customEnd,
+  );
+  if (q.fromYmd != null && q.toYmd != null) {
+    return '${q.fromYmd} → ${q.toYmd}';
+  }
+  return _formatMonthLabel(selectedMonthKey);
 }
 
 const _mvpPiePalette = <Color>[
@@ -346,12 +583,12 @@ const _mvpPiePalette = <Color>[
 
 class _MvpSummaryStrip extends StatelessWidget {
   const _MvpSummaryStrip({
-    required this.monthLabel,
+    required this.periodLabel,
     required this.monthTotal,
     required this.allTime,
   });
 
-  final String monthLabel;
+  final String periodLabel;
   final double monthTotal;
   final String allTime;
 
@@ -365,7 +602,7 @@ class _MvpSummaryStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'This month',
+                  'Period total',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -382,7 +619,7 @@ class _MvpSummaryStrip extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  monthLabel,
+                  periodLabel,
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.45),
@@ -461,7 +698,7 @@ class _MvpCategoryPieCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category split (DB)',
+            'Category split',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -542,7 +779,7 @@ class _MvpCategoryPieCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Month total',
+                        'Total',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -761,13 +998,23 @@ class _VehicleCostCard extends StatelessWidget {
 }
 
 class _MvpCategoryRow extends StatelessWidget {
-  const _MvpCategoryRow({required this.name, required this.total});
+  const _MvpCategoryRow({
+    required this.name,
+    required this.total,
+    required this.periodTotal,
+    required this.categoryAmount,
+    required this.color,
+  });
 
   final String name;
   final String total;
+  final double periodTotal;
+  final double categoryAmount;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final share = periodTotal > 0 ? (categoryAmount / periodTotal) * 100 : 0.0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: MfSpace.lg, vertical: 12),
       decoration: BoxDecoration(
@@ -777,14 +1024,34 @@ class _MvpCategoryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          _CategoryShareDonut(
+            amount: categoryAmount,
+            periodTotal: periodTotal,
+            color: color,
+          ),
+          const SizedBox(width: MfSpace.md),
           Expanded(
-            child: Text(
-              name,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _AnalyticsColors.text,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _AnalyticsColors.text,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${share.clamp(0, 100).toStringAsFixed(share >= 10 ? 0 : 1)}% of period',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: _AnalyticsColors.muted,
+                  ),
+                ),
+              ],
             ),
           ),
           Text(
@@ -796,6 +1063,79 @@ class _MvpCategoryRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CategoryShareDonut extends StatelessWidget {
+  const _CategoryShareDonut({
+    required this.amount,
+    required this.periodTotal,
+    required this.color,
+  });
+
+  final double amount;
+  final double periodTotal;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 52.0;
+    if (periodTotal <= 0 || amount <= 0) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            color: Colors.white.withValues(alpha: 0.04),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.pie_chart_outline_rounded,
+              size: 22,
+              color: _AnalyticsColors.muted,
+            ),
+          ),
+        ),
+      );
+    }
+    final rest = periodTotal - amount;
+    final sections = rest <= 0.0001
+        ? <PieChartSectionData>[
+            PieChartSectionData(
+              value: amount,
+              color: color,
+              radius: 11,
+              showTitle: false,
+            ),
+          ]
+        : <PieChartSectionData>[
+            PieChartSectionData(
+              value: amount,
+              color: color,
+              radius: 11,
+              showTitle: false,
+            ),
+            PieChartSectionData(
+              value: rest,
+              color: Colors.white.withValues(alpha: 0.1),
+              radius: 11,
+              showTitle: false,
+            ),
+          ];
+    return SizedBox(
+      width: size,
+      height: size,
+      child: PieChart(
+        PieChartData(
+          startDegreeOffset: -90,
+          sectionsSpace: 0,
+          centerSpaceRadius: 14,
+          sections: sections,
+        ),
       ),
     );
   }
@@ -1045,56 +1385,157 @@ class _AnalyticsHeader extends StatelessWidget {
     required this.canPop,
     required this.monthKeys,
     required this.selectedMonthKey,
+    required this.periodSubtitle,
+    required this.quickRange,
     required this.onBack,
     required this.onMonthChanged,
+    required this.onThisMonth,
+    required this.onLastMonth,
+    required this.onLast90,
+    required this.onCustomRange,
   });
 
   final bool canPop;
   final List<String> monthKeys;
   final String? selectedMonthKey;
+  final String periodSubtitle;
+  final _QuickRange quickRange;
   final VoidCallback onBack;
   final ValueChanged<String?> onMonthChanged;
+  final VoidCallback onThisMonth;
+  final VoidCallback onLastMonth;
+  final VoidCallback onLast90;
+  final VoidCallback onCustomRange;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final nowKey = _monthKey(DateTime.now());
+    final thisMonthChipSelected =
+        quickRange == _QuickRange.none &&
+        selectedMonthKey != null &&
+        selectedMonthKey == nowKey;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (canPop) ...[
-          _HeaderIconButton(onTap: onBack),
-          const SizedBox(width: MfSpace.md),
-        ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Expense analytics',
-                style: GoogleFonts.inter(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.1,
-                  color: _AnalyticsColors.text,
-                ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (canPop) ...[
+              _HeaderIconButton(onTap: onBack),
+              const SizedBox(width: MfSpace.md),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reports & analytics',
+                    style: GoogleFonts.inter(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.1,
+                      color: _AnalyticsColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    periodSubtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                      color: _AnalyticsColors.muted,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                'A clean read on this month\'s category mix.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _AnalyticsColors.muted,
-                ),
+            ),
+            if (monthKeys.isNotEmpty && selectedMonthKey != null)
+              _MonthSelector(
+                monthKeys: monthKeys,
+                value: selectedMonthKey!,
+                onChanged: onMonthChanged,
+              ),
+          ],
+        ),
+        const SizedBox(height: MfSpace.md),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _RangeChip(
+                label: 'This month',
+                selected: thisMonthChipSelected,
+                onTap: onThisMonth,
+              ),
+              _RangeChip(
+                label: 'Last month',
+                selected: quickRange == _QuickRange.lastMonth,
+                onTap: onLastMonth,
+              ),
+              _RangeChip(
+                label: '90 days',
+                selected: quickRange == _QuickRange.last90,
+                onTap: onLast90,
+              ),
+              _RangeChip(
+                label: 'Custom',
+                selected: quickRange == _QuickRange.custom,
+                onTap: onCustomRange,
               ),
             ],
           ),
         ),
-        if (monthKeys.isNotEmpty && selectedMonthKey != null)
-          _MonthSelector(
-            monthKeys: monthKeys,
-            value: selectedMonthKey!,
-            onChanged: onMonthChanged,
-          ),
       ],
+    );
+  }
+}
+
+class _RangeChip extends StatelessWidget {
+  const _RangeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: MfSpace.sm),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF49D6FF).withValues(alpha: 0.65)
+                    : _AnalyticsColors.border,
+              ),
+              color: selected
+                  ? const Color(0xFF49D6FF).withValues(alpha: 0.16)
+                  : Colors.white.withValues(alpha: 0.05),
+            ),
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? _AnalyticsColors.text : _AnalyticsColors.muted,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1221,9 +1662,14 @@ class _AnalyticsPanel extends StatelessWidget {
 }
 
 class _AnalyticsScaffoldState extends StatelessWidget {
-  const _AnalyticsScaffoldState({required this.canPop, required this.child});
+  const _AnalyticsScaffoldState({
+    required this.canPop,
+    required this.quickRange,
+    required this.child,
+  });
 
   final bool canPop;
+  final _QuickRange quickRange;
   final Widget child;
 
   @override
@@ -1241,8 +1687,14 @@ class _AnalyticsScaffoldState extends StatelessWidget {
             canPop: canPop,
             monthKeys: const [],
             selectedMonthKey: null,
+            periodSubtitle: 'Loading your ledger…',
+            quickRange: quickRange,
             onBack: () => Navigator.of(context).maybePop(),
             onMonthChanged: (_) {},
+            onThisMonth: () {},
+            onLastMonth: () {},
+            onLast90: () {},
+            onCustomRange: () {},
           ),
         ),
         Expanded(child: child),
