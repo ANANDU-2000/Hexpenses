@@ -326,9 +326,8 @@ export class AiService {
       payload: { facet: 'habit', channel: 'savings' },
     });
 
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
     let toStore = drafts;
-    if (apiKey) {
+    if (this.hasAiProvider()) {
       try {
         toStore = await this.openaiPolishDrafts(drafts, currency);
       } catch (e) {
@@ -566,12 +565,38 @@ export class AiService {
     };
   }
 
+  /** True if OpenAI and/or Gemini (Google) API key is configured. */
+  private hasAiProvider(): boolean {
+    return !!(this.getGeminiKey() || this.config.get<string>('OPENAI_API_KEY')?.trim());
+  }
+
+  /** Gemini: GEMINI_API_KEY, or Render-style `gemini_api`. */
+  private getGeminiKey(): string | undefined {
+    return (
+      this.config.get<string>('GEMINI_API_KEY')?.trim() ||
+      this.config.get<string>('gemini_api')?.trim() ||
+      this.config.get<string>('GOOGLE_API_KEY')?.trim()
+    );
+  }
+
   private async openaiComplete(
     messages: { role: string; content: string }[],
     jsonMode: boolean,
   ): Promise<string | null> {
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
-    if (!apiKey) return null;
+    const geminiKey = this.getGeminiKey();
+    if (geminiKey) {
+      return this.geminiComplete(messages, jsonMode, geminiKey);
+    }
+    const openaiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!openaiKey) return null;
+    return this.openaiChatComplete(messages, jsonMode, openaiKey);
+  }
+
+  private async openaiChatComplete(
+    messages: { role: string; content: string }[],
+    jsonMode: boolean,
+    apiKey: string,
+  ): Promise<string | null> {
     const model = this.config.get<string>('OPENAI_MODEL', 'gpt-4o-mini');
     const body: Record<string, unknown> = {
       model,
@@ -587,6 +612,47 @@ export class AiService {
     });
     const content = data?.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content : null;
+  }
+
+  /** Google Gemini (Generative Language API) — same message shape as OpenAI chat. */
+  private async geminiComplete(
+    messages: { role: string; content: string }[],
+    jsonMode: boolean,
+    apiKey: string,
+  ): Promise<string | null> {
+    const model = this.config.get<string>('GEMINI_MODEL', 'gemini-1.5-flash');
+    const systemTexts = messages.filter((m) => m.role === 'system').map((m) => m.content);
+    const systemInstruction =
+      systemTexts.length > 0
+        ? { parts: [{ text: systemTexts.join('\n\n') }] }
+        : undefined;
+    const contents: { role: string; parts: { text: string }[] }[] = [];
+    for (const m of messages) {
+      if (m.role === 'system') continue;
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      contents.push({ role, parts: [{ text: m.content }] });
+    }
+    if (contents.length === 0) return null;
+
+    const body: Record<string, unknown> = {
+      contents,
+      ...(systemInstruction ? { systemInstruction } : {}),
+      generationConfig: {
+        maxOutputTokens: jsonMode ? 2048 : 1024,
+        ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+      },
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const { data } = await axios.post(url, body, {
+      params: { key: apiKey },
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 90000,
+    });
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return null;
+    const text = parts.map((p: { text?: string }) => p?.text ?? '').join('');
+    return text.length ? text : null;
   }
 
   private parseStructured(raw: string): StructuredInsights | null {
@@ -664,10 +730,10 @@ export class AiService {
     }
 
     const context = await this.buildFinancialContext(userId);
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
+    const apiKeyConfigured = this.hasAiProvider();
 
     let structured: StructuredInsights;
-    let source: 'openai' | 'heuristic';
+    let source: 'openai' | 'gemini' | 'heuristic';
 
     const systemJsonPrompt = [
       'You are a disciplined personal finance advisor. Output ONLY valid JSON with these exact keys:',
@@ -678,7 +744,7 @@ export class AiService {
       'Rules: Use ONLY facts from the user data. Respect the stated currency. No markdown. No extra keys.',
     ].join(' ');
 
-    if (apiKey) {
+    if (apiKeyConfigured) {
       try {
         const text = await this.openaiComplete(
           [
@@ -696,7 +762,7 @@ export class AiService {
             savingSuggestions: parsed.savingSuggestions.slice(0, 8),
             budgetRecommendations: parsed.budgetRecommendations.slice(0, 8),
           };
-          source = 'openai';
+          source = this.getGeminiKey() ? 'gemini' : 'openai';
         } else {
           structured = this.heuristicStructured(thisMonth, lastMonth, currency, momTuples);
           source = 'heuristic';
@@ -735,11 +801,10 @@ export class AiService {
     if (!trimmed) throw new BadRequestException('message is required');
 
     const context = await this.buildFinancialContext(userId);
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
-    if (!apiKey) {
+    if (!this.hasAiProvider()) {
       return {
         reply:
-          'The AI assistant needs OPENAI_API_KEY on the server. Meanwhile: compare this month category totals to last month, cap your top category at 90% of last month spend, and automate one savings transfer per paycheck.',
+          'The AI assistant needs GEMINI_API_KEY (or gemini_api) or OPENAI_API_KEY on the server. Meanwhile: compare this month category totals to last month, cap your top category at 90% of last month spend, and automate one savings transfer per paycheck.',
         source: 'heuristic' as const,
       };
     }
@@ -757,7 +822,8 @@ export class AiService {
     try {
       const text = await this.openaiComplete(messages, false);
       if (!text?.trim()) throw new Error('Empty completion');
-      return { reply: text.trim(), source: 'openai' as const };
+      const src: 'gemini' | 'openai' = this.getGeminiKey() ? 'gemini' : 'openai';
+      return { reply: text.trim(), source: src };
     } catch (e) {
       this.logger.warn(`OpenAI chat failed: ${(e as Error).message}`);
       throw new ServiceUnavailableException(
