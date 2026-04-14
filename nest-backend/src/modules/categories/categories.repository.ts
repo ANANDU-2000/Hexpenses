@@ -9,7 +9,9 @@ export class CategoriesRepository {
   findManyByUser(userId: string) {
     return this.prisma.category.findMany({
       where: { userId },
-      include: { subCategoryRows: { orderBy: { name: 'asc' } } },
+      include: {
+        subCategoryRows: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
+      },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }

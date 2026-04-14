@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { PaymentMode } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class ListExpenseDto {
   @IsOptional()
@@ -8,6 +9,18 @@ export class ListExpenseDto {
   @IsOptional()
   @IsString()
   subCategoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  expenseTypeId?: string;
+
+  @IsOptional()
+  @IsString()
+  spendEntityId?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMode)
+  paymentMode?: PaymentMode;
 
   @IsOptional()
   @IsDateString()

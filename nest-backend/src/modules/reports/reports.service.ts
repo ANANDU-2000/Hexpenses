@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AccountType, CategoryType } from "@prisma/client";
+import { AccountType, CategoryType, PaymentMode, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { assertWorkspacePermission } from "../workspaces/workspace-permissions";
 import { WorkspaceContext } from "../workspaces/workspace.types";
@@ -598,6 +598,359 @@ export class ReportsService {
         categoryName: r.category?.name ?? null,
         note: r.note,
       })),
+    };
+  }
+
+  /**
+   * Multi-level analytics: composable filters + pie for next drill level + monthly bars + stacked category×month.
+   */
+  async analyticsDrilldown(
+    ctx: WorkspaceContext,
+    params: {
+      yearStr?: string;
+      monthStr?: string;
+      fromStr?: string;
+      toStr?: string;
+      categoryId?: string;
+      subCategoryId?: string;
+      expenseTypeId?: string;
+      spendEntityId?: string;
+      paymentMode?: string;
+    },
+  ) {
+    assertWorkspacePermission(ctx.role, "expense:read");
+    const { start, endExclusive, label } = this.resolveExpenseMvpWindow(
+      params.yearStr,
+      params.monthStr,
+      params.fromStr,
+      params.toStr,
+    );
+
+    let pm: PaymentMode | undefined;
+    if (
+      params.paymentMode &&
+      (Object.values(PaymentMode) as string[]).includes(params.paymentMode)
+    ) {
+      pm = params.paymentMode as PaymentMode;
+    }
+
+    const baseWhere: Prisma.ExpenseWhereInput = {
+      userId: ctx.ownerUserId,
+      workspaceId: ctx.workspaceId,
+      category: { type: CategoryType.expense },
+      date: { gte: start, lt: endExclusive },
+    };
+    if (params.categoryId) baseWhere.categoryId = params.categoryId;
+    if (params.subCategoryId) baseWhere.subCategoryId = params.subCategoryId;
+    if (params.expenseTypeId) baseWhere.expenseTypeId = params.expenseTypeId;
+    if (params.spendEntityId) baseWhere.spendEntityId = params.spendEntityId;
+    if (pm) baseWhere.paymentMode = pm;
+
+    const rows = await this.prisma.expense.findMany({
+      where: baseWhere,
+      select: {
+        amount: true,
+        date: true,
+        categoryId: true,
+        subCategoryId: true,
+        expenseTypeId: true,
+        spendEntityId: true,
+        category: { select: { id: true, name: true, sortOrder: true } },
+        subCategory: { select: { id: true, name: true, sortOrder: true } },
+        expenseType: { select: { id: true, name: true } },
+        spendEntity: { select: { id: true, name: true, kind: true } },
+      },
+    });
+
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+    const count = rows.length;
+
+    type PieRow = {
+      labels: string[];
+      values: number[];
+      ids: string[];
+      level: string;
+    };
+
+    let pie: PieRow = { labels: [], values: [], ids: [], level: "none" };
+
+    if (!params.categoryId) {
+      const m = new Map<
+        string,
+        { name: string; total: number; sortOrder: number }
+      >();
+      for (const r of rows) {
+        const id = r.categoryId;
+        const add = Number(r.amount);
+        const prev = m.get(id);
+        if (prev) prev.total += add;
+        else
+          m.set(id, {
+            name: r.category.name,
+            total: add,
+            sortOrder: r.category.sortOrder,
+          });
+      }
+      const entries = [...m.entries()].sort((a, b) => {
+        const o = a[1].sortOrder - b[1].sortOrder;
+        if (o !== 0) return o;
+        return a[1].name.localeCompare(b[1].name);
+      });
+      pie = {
+        labels: entries.map(([, v]) => v.name),
+        values: entries.map(([, v]) => v.total),
+        ids: entries.map(([k]) => k),
+        level: "category",
+      };
+    } else if (!params.subCategoryId) {
+      const m = new Map<string, { name: string; total: number; sort: number }>();
+      for (const r of rows) {
+        if (!r.subCategoryId || !r.subCategory) continue;
+        const id = r.subCategoryId;
+        const add = Number(r.amount);
+        const prev = m.get(id);
+        if (prev) prev.total += add;
+        else
+          m.set(id, {
+            name: r.subCategory.name,
+            total: add,
+            sort: r.subCategory.sortOrder,
+          });
+      }
+      const unassigned = rows
+        .filter((r) => !r.subCategoryId)
+        .reduce((s, r) => s + Number(r.amount), 0);
+      if (unassigned > 0) {
+        m.set("__unassigned__", {
+          name: "Unassigned",
+          total: unassigned,
+          sort: 9999,
+        });
+      }
+      const entries = [...m.entries()].sort((a, b) => {
+        const o = a[1].sort - b[1].sort;
+        if (o !== 0) return o;
+        return a[1].name.localeCompare(b[1].name);
+      });
+      pie = {
+        labels: entries.map(([, v]) => v.name),
+        values: entries.map(([, v]) => v.total),
+        ids: entries.map(([k]) => k),
+        level: "subcategory",
+      };
+    } else if (!params.expenseTypeId) {
+      const m = new Map<string, { name: string; total: number }>();
+      for (const r of rows) {
+        const id = r.expenseTypeId ?? "__none__";
+        const name = r.expenseType?.name ?? "Unspecified type";
+        const add = Number(r.amount);
+        const prev = m.get(id);
+        if (prev) prev.total += add;
+        else m.set(id, { name, total: add });
+      }
+      const entries = [...m.entries()].sort((a, b) =>
+        a[1].name.localeCompare(b[1].name),
+      );
+      pie = {
+        labels: entries.map(([, v]) => v.name),
+        values: entries.map(([, v]) => v.total),
+        ids: entries.map(([k]) => k),
+        level: "expenseType",
+      };
+    } else if (!params.spendEntityId) {
+      const m = new Map<string, { name: string; total: number }>();
+      for (const r of rows) {
+        const id = r.spendEntityId ?? "__none__";
+        const name = r.spendEntity?.name ?? "Unspecified entity";
+        const add = Number(r.amount);
+        const prev = m.get(id);
+        if (prev) prev.total += add;
+        else m.set(id, { name, total: add });
+      }
+      const entries = [...m.entries()].sort((a, b) =>
+        a[1].name.localeCompare(b[1].name),
+      );
+      pie = {
+        labels: entries.map(([, v]) => v.name),
+        values: entries.map(([, v]) => v.total),
+        ids: entries.map(([k]) => k),
+        level: "entity",
+      };
+    } else {
+      pie = {
+        labels: ["Selected slice"],
+        values: [total],
+        ids: [params.spendEntityId],
+        level: "leaf",
+      };
+    }
+
+    const monthBuckets: { key: string; label: string }[] = [];
+    for (
+      let d = new Date(start.getFullYear(), start.getMonth(), 1);
+      d < endExclusive;
+      d = new Date(d.getFullYear(), d.getMonth() + 1, 1)
+    ) {
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      const labelShort = d.toLocaleString("en-US", { month: "short" });
+      monthBuckets.push({ key, label: labelShort });
+    }
+    if (monthBuckets.length === 0) {
+      const key = `${start.getFullYear()}-${start.getMonth() + 1}`;
+      monthBuckets.push({
+        key,
+        label: start.toLocaleString("en-US", { month: "short" }),
+      });
+    }
+
+    const monthlyValues = monthBuckets.map(({ key }) => {
+      const [ys, ms] = key.split("-").map(Number);
+      const msStart = new Date(ys, ms - 1, 1);
+      const msEnd = new Date(ys, ms, 1);
+      let s = 0;
+      for (const r of rows) {
+        const t = r.date.getTime();
+        if (t >= msStart.getTime() && t < msEnd.getTime()) s += Number(r.amount);
+      }
+      return s;
+    });
+
+    const catKeys = new Map<string, { name: string; sort: number }>();
+    for (const r of rows) {
+      if (!catKeys.has(r.categoryId))
+        catKeys.set(r.categoryId, {
+          name: r.category.name,
+          sort: r.category.sortOrder,
+        });
+    }
+    const categoriesOrdered = [...catKeys.entries()].sort((a, b) => {
+      const o = a[1].sort - b[1].sort;
+      if (o !== 0) return o;
+      return a[1].name.localeCompare(b[1].name);
+    });
+
+    const stacked = {
+      months: monthBuckets.map((m) => m.key),
+      monthLabels: monthBuckets.map((m) => m.label),
+      series: categoriesOrdered.map(([cid, meta]) => {
+        const values = monthBuckets.map(({ key }) => {
+          const [ys, ms] = key.split("-").map(Number);
+          const msStart = new Date(ys, ms - 1, 1);
+          const msEnd = new Date(ys, ms, 1);
+          let s = 0;
+          for (const r of rows) {
+            if (r.categoryId !== cid) continue;
+            const t = r.date.getTime();
+            if (t >= msStart.getTime() && t < msEnd.getTime())
+              s += Number(r.amount);
+          }
+          return s;
+        });
+        return { categoryId: cid, name: meta.name, values };
+      }),
+    };
+
+    const lineTrend = {
+      labels: monthBuckets.map((m) => m.label),
+      values: monthlyValues,
+    };
+
+    return {
+      period: label,
+      total: total.toFixed(2),
+      count,
+      average: count > 0 ? (total / count).toFixed(2) : "0",
+      pie,
+      chart: {
+        monthlyBar: {
+          labels: monthBuckets.map((m) => m.label),
+          values: monthlyValues,
+        },
+        lineTrend,
+        stackedCategoryMonth: stacked,
+      },
+      filters: {
+        categoryId: params.categoryId ?? null,
+        subCategoryId: params.subCategoryId ?? null,
+        expenseTypeId: params.expenseTypeId ?? null,
+        spendEntityId: params.spendEntityId ?? null,
+        paymentMode: pm ?? null,
+      },
+    };
+  }
+
+  /** Lightweight anomaly / trend hints for dashboard (rule-based). */
+  async insightsSnapshot(ctx: WorkspaceContext) {
+    assertWorkspacePermission(ctx.role, "expense:read");
+    const now = new Date();
+    const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevEnd = curStart;
+
+    const [curRows, prevRows] = await Promise.all([
+      this.prisma.expense.findMany({
+        where: {
+          userId: ctx.ownerUserId,
+          workspaceId: ctx.workspaceId,
+          category: { type: CategoryType.expense },
+          date: { gte: curStart, lt: curEnd },
+        },
+        select: { amount: true, categoryId: true, category: { select: { name: true } } },
+      }),
+      this.prisma.expense.findMany({
+        where: {
+          userId: ctx.ownerUserId,
+          workspaceId: ctx.workspaceId,
+          category: { type: CategoryType.expense },
+          date: { gte: prevStart, lt: prevEnd },
+        },
+        select: { amount: true },
+      }),
+    ]);
+
+    const curTotal = curRows.reduce((s, r) => s + Number(r.amount), 0);
+    const prevTotal = prevRows.reduce((s, r) => s + Number(r.amount), 0);
+    const delta = curTotal - prevTotal;
+    const pct =
+      prevTotal > 0 ? ((delta / prevTotal) * 100).toFixed(1) : null;
+
+    const byCat = new Map<string, { name: string; total: number }>();
+    for (const r of curRows) {
+      const id = r.categoryId;
+      const add = Number(r.amount);
+      const prev = byCat.get(id);
+      if (prev) prev.total += add;
+      else byCat.set(id, { name: r.category.name, total: add });
+    }
+    let top: { categoryId: string; name: string; total: string } | null =
+      null;
+    for (const [categoryId, v] of byCat) {
+      if (!top || v.total > parseFloat(top.total)) {
+        top = { categoryId, name: v.name, total: v.total.toFixed(2) };
+      }
+    }
+
+    const alerts: { severity: "info" | "warn"; message: string }[] = [];
+    if (pct != null && Number(pct) > 15) {
+      alerts.push({
+        severity: "warn",
+        message: `Spending is ${pct}% higher than last month.`,
+      });
+    }
+    if (pct != null && Number(pct) < -10) {
+      alerts.push({
+        severity: "info",
+        message: `Spending is ${Math.abs(Number(pct))}% lower than last month.`,
+      });
+    }
+
+    return {
+      thisMonthTotal: curTotal.toFixed(2),
+      lastMonthTotal: prevTotal.toFixed(2),
+      monthOverMonthPct: pct,
+      topCategoryThisMonth: top,
+      alerts,
     };
   }
 }

@@ -17,6 +17,10 @@ export class ListDocumentsDto {
   tag?: string;
 
   @IsOptional()
+  @IsString()
+  expenseId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

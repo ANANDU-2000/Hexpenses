@@ -12,6 +12,7 @@ import '../../expenses/application/expense_providers.dart'
     show categoriesProvider, expensesProvider;
 import '../../income/application/income_providers.dart';
 import '../application/analytics_providers.dart';
+import 'drilldown_analytics_screen.dart';
 
 /// Dark analytics view: weekly bars, expense/income toggle, category cards.
 class AnalyticsDashboardScreen extends ConsumerStatefulWidget {
@@ -54,6 +55,19 @@ class _AnalyticsDashboardScreenState extends ConsumerState<AnalyticsDashboardScr
             color: Colors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Drill-down explorer',
+            icon: const Icon(Icons.hub_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DrilldownAnalyticsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         color: MfPalette.neonGreen,

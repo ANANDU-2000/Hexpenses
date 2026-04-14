@@ -10,6 +10,7 @@ import {
   AiInsightType,
   CategorySystemKey,
   CategoryType,
+  EntityKind,
   Frequency,
   NotificationCategory,
   NotificationChannel,
@@ -140,7 +141,7 @@ async function main() {
       name: 'Donations',
       key: CategorySystemKey.donations,
       sort: 5,
-      subs: ['Charity', 'Religious'],
+      subs: ['Charity', 'Religious', 'Political'],
     },
     {
       name: 'Business',
@@ -171,12 +172,14 @@ async function main() {
       },
     });
     categoryByKey.set(c.key, cat);
-    for (const subName of c.subs) {
+    for (let si = 0; si < c.subs.length; si++) {
+      const subName = c.subs[si];
       const sub = await prisma.subCategory.create({
         data: {
           name: subName,
           nameKey: nk(subName),
           categoryId: cat.id,
+          sortOrder: si,
         },
       });
       subByPath.set(`${c.key}:${nk(subName)}`, sub.id);
@@ -215,6 +218,62 @@ async function main() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const donationsCat = categoryByKey.get(CategorySystemKey.donations)!;
+  const politicalId = subByPath.get(
+    `${CategorySystemKey.donations}:${nk('Political')}`,
+  )!;
+
+  const petrolType = await prisma.expenseTypeDef.create({
+    data: {
+      userId: user.id,
+      subCategoryId: fuelId,
+      name: 'Petrol',
+      nameKey: nk('Petrol'),
+      sortOrder: 0,
+    },
+  });
+  await prisma.expenseTypeDef.createMany({
+    data: [
+      {
+        userId: user.id,
+        subCategoryId: fuelId,
+        name: 'Diesel',
+        nameKey: nk('Diesel'),
+        sortOrder: 1,
+      },
+      {
+        userId: user.id,
+        subCategoryId: fuelId,
+        name: 'CNG',
+        nameKey: nk('CNG'),
+        sortOrder: 2,
+      },
+    ],
+  });
+
+  await prisma.spendEntity.createMany({
+    data: [
+      {
+        userId: user.id,
+        workspaceId: ws.id,
+        categoryId: donationsCat.id,
+        subCategoryId: politicalId,
+        name: 'BJP',
+        nameKey: nk('BJP'),
+        kind: EntityKind.donation_recipient,
+      },
+      {
+        userId: user.id,
+        workspaceId: ws.id,
+        categoryId: donationsCat.id,
+        subCategoryId: politicalId,
+        name: 'LDF',
+        nameKey: nk('LDF'),
+        kind: EntityKind.donation_recipient,
+      },
+    ],
+  });
+
   await prisma.expense.createMany({
     data: [
       {
@@ -244,6 +303,7 @@ async function main() {
         workspaceId: ws.id,
         categoryId: vehicleCat.id,
         subCategoryId: fuelId,
+        expenseTypeId: petrolType.id,
         accountId: mainBank.id,
         amount: new Prisma.Decimal('60'),
         date: new Date(startOfMonth.getTime() + 8 * 86400000),

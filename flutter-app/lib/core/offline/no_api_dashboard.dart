@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'db/ledger_database.dart';
+import '../../features/analytics/domain/analytics_filter.dart';
 
 double _parseAmount(dynamic v) {
   if (v is num) return v.toDouble();
@@ -244,6 +245,89 @@ Future<Map<String, dynamic>> buildOfflineExpenseMvp(
     'upcomingPayments': {'count': 0, 'note': 'Offline mode'},
   };
 }
+
+Future<Map<String, dynamic>> buildOfflineAnalytics(
+  LedgerDatabase db,
+  AnalyticsFilter f,
+) async {
+  final now = DateTime.now();
+  var y = f.year ?? now.year;
+  var mo = f.month ?? now.month;
+  if (f.fromYmd != null && f.toYmd != null) {
+    final d = DateTime.tryParse('${f.fromYmd}T00:00:00');
+    if (d != null) {
+      y = d.year;
+      mo = d.month;
+    }
+  }
+  final mvp = await buildOfflineExpenseMvp(
+    db,
+    y,
+    mo,
+    fromYmd: f.fromYmd,
+    toYmd: f.toYmd,
+  );
+  final breakdown = (mvp['categoryBreakdownMonth'] as List? ?? [])
+      .map((e) => Map<String, dynamic>.from(e as Map))
+      .toList();
+  final total =
+      double.tryParse(mvp['thisMonthExpenses']?.toString() ?? '0') ?? 0;
+  final pie = {
+    'labels': breakdown.map((e) => e['name']).toList(),
+    'values': breakdown
+        .map((e) => double.tryParse(e['total']?.toString() ?? '0') ?? 0)
+        .toList(),
+    'ids': breakdown.map((e) => e['categoryId']).toList(),
+    'level': 'category',
+  };
+  final bar = mvp['chart'] is Map
+      ? (mvp['chart'] as Map)['monthlyExpenses'] as Map?
+      : null;
+  final barLabels = (bar?['labels'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+      <String>[];
+  final barVals = (bar?['values'] as List?)
+          ?.map(
+            (e) =>
+                (e is num) ? e.toDouble() : double.tryParse(e.toString()) ?? 0,
+          )
+          .toList() ??
+      <double>[];
+  return {
+    'period': mvp['period'],
+    'total': total.toStringAsFixed(2),
+    'count': breakdown.length,
+    'average': breakdown.isEmpty
+        ? '0'
+        : (total / breakdown.length).toStringAsFixed(2),
+    'pie': pie,
+    'chart': {
+      'monthlyBar': {'labels': barLabels, 'values': barVals},
+      'lineTrend': {'labels': barLabels, 'values': barVals},
+      'stackedCategoryMonth': {
+        'months': barLabels,
+        'monthLabels': barLabels,
+        'series': <Map<String, dynamic>>[],
+      },
+    },
+    'filters': {
+      'categoryId': f.categoryId,
+      'subCategoryId': f.subCategoryId,
+      'expenseTypeId': f.expenseTypeId,
+      'spendEntityId': f.spendEntityId,
+      'paymentMode': f.paymentMode,
+    },
+  };
+}
+
+Map<String, dynamic> buildOfflineInsights() => {
+      'thisMonthTotal': '0',
+      'lastMonthTotal': '0',
+      'monthOverMonthPct': null,
+      'topCategoryThisMonth': null,
+      'alerts': <Map<String, dynamic>>[],
+    };
 
 class OfflineModeBanner extends StatelessWidget {
   const OfflineModeBanner({super.key});

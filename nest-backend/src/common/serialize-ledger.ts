@@ -1,4 +1,11 @@
-import type { Account, Category, Prisma, SubCategory } from '@prisma/client';
+import type {
+  Account,
+  Category,
+  ExpenseTypeDef,
+  Prisma,
+  SpendEntity,
+  SubCategory,
+} from '@prisma/client';
 
 export function serializeAccount(a: Account) {
   return {
@@ -31,6 +38,32 @@ export function serializeSubCategory(s: SubCategory) {
     name: s.name,
     nameKey: s.nameKey,
     categoryId: s.categoryId,
+    sortOrder: s.sortOrder,
+  };
+}
+
+export function serializeExpenseTypeDef(t: ExpenseTypeDef) {
+  return {
+    id: t.id,
+    name: t.name,
+    nameKey: t.nameKey,
+    subCategoryId: t.subCategoryId,
+    sortOrder: t.sortOrder,
+    userId: t.userId,
+  };
+}
+
+export function serializeSpendEntity(e: SpendEntity) {
+  return {
+    id: e.id,
+    name: e.name,
+    nameKey: e.nameKey,
+    kind: e.kind,
+    categoryId: e.categoryId,
+    subCategoryId: e.subCategoryId,
+    workspaceId: e.workspaceId,
+    vehicleId: e.vehicleId,
+    userId: e.userId,
   };
 }
 
@@ -38,6 +71,8 @@ export type ExpenseWithRelations = Prisma.ExpenseGetPayload<{
   include: {
     category: true;
     subCategory: true;
+    expenseType: true;
+    spendEntity: true;
     account: true;
     enteredBy: { select: { id: true; name: true } };
   };
@@ -49,6 +84,9 @@ export function serializeExpense(e: ExpenseWithRelations) {
     amount: e.amount.toFixed(2),
     categoryId: e.categoryId,
     subCategoryId: e.subCategoryId,
+    expenseTypeId: e.expenseTypeId,
+    spendEntityId: e.spendEntityId,
+    paymentMode: e.paymentMode,
     accountId: e.accountId,
     date: e.date.toISOString(),
     note: e.note,
@@ -68,6 +106,8 @@ export function serializeExpense(e: ExpenseWithRelations) {
     updatedAt: e.updatedAt.toISOString(),
     category: serializeCategory(e.category),
     subCategory: e.subCategory ? serializeSubCategory(e.subCategory) : null,
+    expenseType: e.expenseType ? serializeExpenseTypeDef(e.expenseType) : null,
+    spendEntity: e.spendEntity ? serializeSpendEntity(e.spendEntity) : null,
     account: e.account ? serializeAccount(e.account) : null,
     enteredBy: e.enteredBy,
   };

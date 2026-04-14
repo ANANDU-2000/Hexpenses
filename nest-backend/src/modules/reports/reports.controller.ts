@@ -34,6 +34,38 @@ export class ReportsController {
    * MVP: lifetime spend, selected month category totals (chart-ready pie + monthly expense bars),
    * recurring/upcoming placeholders, vehicle cost summary.
    */
+  /** Composable drill-down analytics (pie + monthly + stacked + line). */
+  @Get("analytics")
+  analytics(
+    @Req() req: RequestWithWorkspace,
+    @Query("year") year?: string,
+    @Query("month") month?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("categoryId") categoryId?: string,
+    @Query("subCategoryId") subCategoryId?: string,
+    @Query("expenseTypeId") expenseTypeId?: string,
+    @Query("spendEntityId") spendEntityId?: string,
+    @Query("paymentMode") paymentMode?: string,
+  ) {
+    return this.reports.analyticsDrilldown(req.workspaceContext, {
+      yearStr: year,
+      monthStr: month,
+      fromStr: from,
+      toStr: to,
+      categoryId,
+      subCategoryId,
+      expenseTypeId,
+      spendEntityId,
+      paymentMode,
+    });
+  }
+
+  @Get("insights")
+  insights(@Req() req: RequestWithWorkspace) {
+    return this.reports.insightsSnapshot(req.workspaceContext);
+  }
+
   @Get("expense-mvp")
   expenseMvp(
     @Req() req: RequestWithWorkspace,

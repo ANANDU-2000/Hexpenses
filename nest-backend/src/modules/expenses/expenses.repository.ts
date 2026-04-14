@@ -9,7 +9,14 @@ export class ExpensesRepository {
   create(data: Prisma.ExpenseUncheckedCreateInput) {
     return this.prisma.expense.create({
       data,
-      include: { category: true, subCategory: true, account: true, enteredBy: { select: { id: true, name: true } } },
+      include: {
+        category: true,
+        subCategory: true,
+        expenseType: true,
+        spendEntity: true,
+        account: true,
+        enteredBy: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -20,7 +27,14 @@ export class ExpensesRepository {
   ) {
     return this.prisma.expense.findMany({
       where: { ...where, userId, workspaceId },
-      include: { category: true, subCategory: true, account: true, enteredBy: { select: { id: true, name: true } } },
+      include: {
+        category: true,
+        subCategory: true,
+        expenseType: true,
+        spendEntity: true,
+        account: true,
+        enteredBy: { select: { id: true, name: true } },
+      },
       orderBy: { date: 'desc' },
     });
   }
@@ -28,7 +42,14 @@ export class ExpensesRepository {
   findOneForUser(userId: string, workspaceId: string, id: string) {
     return this.prisma.expense.findFirst({
       where: { id, userId, workspaceId },
-      include: { category: true, subCategory: true, account: true, enteredBy: { select: { id: true, name: true } } },
+      include: {
+        category: true,
+        subCategory: true,
+        expenseType: true,
+        spendEntity: true,
+        account: true,
+        enteredBy: { select: { id: true, name: true } },
+      },
     });
   }
 

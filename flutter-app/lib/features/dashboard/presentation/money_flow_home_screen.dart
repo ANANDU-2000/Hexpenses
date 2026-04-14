@@ -317,6 +317,65 @@ List<_ActivityItem> _buildActivityItems({
   return items.take(6).toList();
 }
 
+class _InsightsStrip extends ConsumerWidget {
+  const _InsightsStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (kNoApiMode) return const SizedBox.shrink();
+    final async = ref.watch(insightsSnapshotProvider);
+    return async.when(
+      data: (d) {
+        final alerts = d['alerts'] as List? ?? [];
+        if (alerts.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Smart insights',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _DashboardColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: MfSpace.sm),
+            ...alerts.map((raw) {
+              final a = Map<String, dynamic>.from(raw as Map);
+              final sev = a['severity']?.toString() ?? 'info';
+              final bg = sev == 'warn'
+                  ? const Color(0x33FF6B7D)
+                  : const Color(0x224ACBFF);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: MfSpace.sm),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(MfSpace.md),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _DashboardColors.border),
+                  ),
+                  child: Text(
+                    a['message']?.toString() ?? '',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: _DashboardColors.textPrimary,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
 class MoneyFlowHomeScreen extends ConsumerWidget {
   const MoneyFlowHomeScreen({super.key});
 
@@ -379,6 +438,8 @@ class MoneyFlowHomeScreen extends ConsumerWidget {
                               ],
                               const SizedBox(height: MfSpace.xxl),
                               _BalanceCard(summary: summary),
+                              const SizedBox(height: MfSpace.md),
+                              const _InsightsStrip(),
                               const SizedBox(height: MfSpace.md),
                               Row(
                                 children: [

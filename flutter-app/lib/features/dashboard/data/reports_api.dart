@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_envelope.dart';
 import '../../../core/providers.dart';
+import '../../analytics/domain/analytics_filter.dart';
 
 class ReportsApi {
   ReportsApi(this._dio);
@@ -57,6 +58,21 @@ class ReportsApi {
         if (toYmd != null && toYmd.isNotEmpty) 'to': toYmd,
       },
     );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
+  /// Drill-down analytics: pie + monthly + stacked + line trend.
+  Future<Map<String, dynamic>> analytics(AnalyticsFilter filter) async {
+    final res = await _dio.get<dynamic>(
+      '/reports/analytics',
+      queryParameters: filter.toQuery(),
+    );
+    return unwrapApiMap(res.data) ?? <String, dynamic>{};
+  }
+
+  /// Rule-based MoM / alerts for dashboard cards.
+  Future<Map<String, dynamic>> insightsSnapshot() async {
+    final res = await _dio.get<dynamic>('/reports/insights');
     return unwrapApiMap(res.data) ?? <String, dynamic>{};
   }
 

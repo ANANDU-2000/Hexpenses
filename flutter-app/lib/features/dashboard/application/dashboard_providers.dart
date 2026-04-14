@@ -4,6 +4,7 @@ import '../../../core/api_config.dart';
 import '../../../core/offline/no_api_dashboard.dart';
 import '../../../core/offline/sync/ledger_sync_service.dart';
 import '../data/reports_api.dart';
+import '../../analytics/domain/analytics_filter.dart';
 
 /// Calendar month and/or inclusive YYYY-MM-DD range for expense analytics API.
 typedef ExpenseMvpQuery = ({
@@ -65,4 +66,23 @@ final expenseMvpProvider = FutureProvider.autoDispose
             toYmd: m.toYmd,
             trendMonths: 12,
           );
+    });
+
+final analyticsDrilldownProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, AnalyticsFilter>((ref, f) async {
+      if (kNoApiMode) {
+        return buildOfflineAnalytics(
+          ref.watch(ledgerDatabaseProvider),
+          f,
+        );
+      }
+      return ref.watch(reportsApiProvider).analytics(f);
+    });
+
+final insightsSnapshotProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+      if (kNoApiMode) {
+        return buildOfflineInsights();
+      }
+      return ref.watch(reportsApiProvider).insightsSnapshot();
     });

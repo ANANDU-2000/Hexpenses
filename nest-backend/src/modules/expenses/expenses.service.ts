@@ -39,6 +39,47 @@ export class ExpensesService {
     private readonly budgets: BudgetsService,
   ) {}
 
+  private async assertExpenseDimensions(
+    tx: Prisma.TransactionClient,
+    ledgerUserId: string,
+    data: {
+      categoryId: string;
+      subCategoryId?: string | null;
+      expenseTypeId?: string | null;
+      spendEntityId?: string | null;
+    },
+  ) {
+    if (data.expenseTypeId) {
+      const et = await tx.expenseTypeDef.findFirst({
+        where: { id: data.expenseTypeId, userId: ledgerUserId },
+      });
+      if (!et) throw new BadRequestException("Invalid expense type");
+      if (
+        data.subCategoryId &&
+        et.subCategoryId !== data.subCategoryId
+      ) {
+        throw new BadRequestException(
+          "Expense type must belong to the selected subcategory",
+        );
+      }
+    }
+    if (data.spendEntityId) {
+      const se = await tx.spendEntity.findFirst({
+        where: { id: data.spendEntityId, userId: ledgerUserId },
+      });
+      if (!se) throw new BadRequestException("Invalid entity");
+      if (se.categoryId !== data.categoryId) {
+        throw new BadRequestException("Entity must match category");
+      }
+      if (
+        data.subCategoryId &&
+        se.subCategoryId !== data.subCategoryId
+      ) {
+        throw new BadRequestException("Entity must match subcategory");
+      }
+    }
+  }
+
   private normalizeTax(
     amount: number,
     taxable: boolean | undefined,
@@ -112,6 +153,8 @@ export class ExpensesService {
         include: {
           category: true,
           subCategory: true,
+          expenseType: true,
+          spendEntity: true,
           account: true,
           enteredBy: { select: { id: true, name: true } },
         },
@@ -155,6 +198,12 @@ export class ExpensesService {
             "Selected category cannot be used for expenses",
           );
         }
+        await this.assertExpenseDimensions(tx, ledgerUserId, {
+          categoryId: dto.categoryId,
+          subCategoryId: dto.subCategoryId,
+          expenseTypeId: dto.expenseTypeId,
+          spendEntityId: dto.spendEntityId,
+        });
         const tax = this.normalizeTax(
           dto.amount,
           dto.taxable,
@@ -169,6 +218,9 @@ export class ExpensesService {
             amount: dto.amount,
             categoryId: dto.categoryId,
             subCategoryId: dto.subCategoryId,
+            expenseTypeId: dto.expenseTypeId,
+            spendEntityId: dto.spendEntityId,
+            paymentMode: dto.paymentMode,
             date: new Date(dto.date),
             note: dto.note,
             vehicleId: dto.vehicleId,
@@ -180,6 +232,8 @@ export class ExpensesService {
           include: {
             category: true,
             subCategory: true,
+            expenseType: true,
+            spendEntity: true,
             account: true,
             enteredBy: { select: { id: true, name: true } },
           },
@@ -257,6 +311,9 @@ export class ExpensesService {
       .findManyForUser(ctx.ownerUserId, ctx.workspaceId, {
         categoryId: query.categoryId,
         subCategoryId: query.subCategoryId,
+        ...(query.expenseTypeId ? { expenseTypeId: query.expenseTypeId } : {}),
+        ...(query.spendEntityId ? { spendEntityId: query.spendEntityId } : {}),
+        ...(query.paymentMode ? { paymentMode: query.paymentMode } : {}),
         ...(query.accountId ? { accountId: query.accountId } : {}),
         date: {
           gte: query.startDate ? new Date(query.startDate) : undefined,
@@ -305,6 +362,25 @@ export class ExpensesService {
             );
           }
         }
+        const effCategoryId = dto.categoryId ?? before.categoryId;
+        const effSub =
+          dto.subCategoryId !== undefined
+            ? dto.subCategoryId
+            : before.subCategoryId;
+        const effExpenseTypeId =
+          dto.expenseTypeId !== undefined
+            ? dto.expenseTypeId
+            : before.expenseTypeId;
+        const effSpendEntityId =
+          dto.spendEntityId !== undefined
+            ? dto.spendEntityId
+            : before.spendEntityId;
+        await this.assertExpenseDimensions(tx, ledgerUserId, {
+          categoryId: effCategoryId,
+          subCategoryId: effSub,
+          expenseTypeId: effExpenseTypeId,
+          spendEntityId: effSpendEntityId,
+        });
         if (before.accountId) {
           await this.accounts.applyExpenseRemovedTx(tx, ledgerUserId, {
             accountId: before.accountId,
@@ -349,6 +425,19 @@ export class ExpensesService {
             ? { connect: { id: dto.vehicleId } }
             : { disconnect: true };
         }
+        if (dto.expenseTypeId !== undefined) {
+          data.expenseType = dto.expenseTypeId
+            ? { connect: { id: dto.expenseTypeId } }
+            : { disconnect: true };
+        }
+        if (dto.spendEntityId !== undefined) {
+          data.spendEntity = dto.spendEntityId
+            ? { connect: { id: dto.spendEntityId } }
+            : { disconnect: true };
+        }
+        if (dto.paymentMode !== undefined) {
+          data.paymentMode = dto.paymentMode;
+        }
         if (dto.accountId !== undefined) {
           data.account = dto.accountId
             ? { connect: { id: dto.accountId } }
@@ -363,6 +452,8 @@ export class ExpensesService {
           include: {
             category: true,
             subCategory: true,
+            expenseType: true,
+            spendEntity: true,
             account: true,
             enteredBy: { select: { id: true, name: true } },
           },

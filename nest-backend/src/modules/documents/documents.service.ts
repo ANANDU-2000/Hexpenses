@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { Document, Prisma } from '@prisma/client';
 import { createReadStream, existsSync, mkdirSync } from 'fs';
 import type { Express } from 'express';
@@ -42,8 +47,15 @@ export class DocumentsService implements OnModuleInit {
     file: Express.Multer.File,
     type: string,
     tagsRaw?: string,
+    expenseId?: string,
   ): Promise<Document> {
     const tags = this.parseTags(tagsRaw);
+    if (expenseId) {
+      const exp = await this.prisma.expense.findFirst({
+        where: { id: expenseId, userId },
+      });
+      if (!exp) throw new BadRequestException('Expense not found');
+    }
     const searchBlob = this.buildSearchBlob(file.originalname ?? null, type, tags);
     return this.prisma.document.create({
       data: {
@@ -54,6 +66,7 @@ export class DocumentsService implements OnModuleInit {
         mimeType: file.mimetype,
         tags,
         searchBlob,
+        expenseId: expenseId ?? undefined,
       },
     });
   }
@@ -61,6 +74,7 @@ export class DocumentsService implements OnModuleInit {
   async list(userId: string, query: ListDocumentsDto): Promise<Document[]> {
     const where: Prisma.DocumentWhereInput = { userId };
     if (query.type) where.type = query.type;
+    if (query.expenseId) where.expenseId = query.expenseId;
     if (query.tag?.trim()) where.tags = { has: query.tag.trim().toLowerCase() };
     if (query.q?.trim()) {
       where.searchBlob = { contains: query.q.trim().toLowerCase() };

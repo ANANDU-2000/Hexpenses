@@ -9,4 +9,9 @@ export class UploadDocumentDto {
   @IsString()
   @MaxLength(2000)
   tags?: string;
+
+  /** Link attachment to a ledger expense (same user). */
+  @IsOptional()
+  @IsString()
+  expenseId?: string;
 }

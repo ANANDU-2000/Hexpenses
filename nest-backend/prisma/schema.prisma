@@ -73,6 +73,24 @@ enum RecurringMode {
   reminder_only
 }
 
+/// Real-world item: vehicle, person, vendor, donation recipient, etc.
+enum EntityKind {
+  vehicle
+  person
+  vendor
+  donation_recipient
+  other
+}
+
+enum PaymentMode {
+  cash
+  card
+  upi
+  bank_transfer
+  wallet
+  other
+}
+
 enum ExpenseSource {
   manual
   whatsapp
@@ -202,6 +220,8 @@ model User {
   expensesEntered         Expense[]         @relation("ExpenseEnteredBy")
   auditLogs               AuditLog[]
   appUsageEvents          AppUsageEvent[]
+  expenseTypeDefs         ExpenseTypeDef[]
+  spendEntities           SpendEntity[]
 }
 
 /// Dashboard admin (separate from end users).
@@ -297,6 +317,7 @@ model Category {
   expenses          Expense[]
   recurringExpenses RecurringExpense[]
   budgets           Budget[]
+  spendEntities     SpendEntity[]
 
   @@unique([userId, nameKey])
   @@index([userId, type])
@@ -320,15 +341,61 @@ model Budget {
 }
 
 model SubCategory {
-  id         String    @id @default(cuid())
-  name       String
-  nameKey    String
-  categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  expenses   Expense[]
+  id              String           @id @default(cuid())
+  name            String
+  nameKey         String
+  sortOrder       Int              @default(0)
+  categoryId      String
+  category        Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  expenses        Expense[]
+  expenseTypeDefs ExpenseTypeDef[]
+  spendEntities   SpendEntity[]
 
   @@unique([categoryId, nameKey])
   @@index([categoryId])
+  @@index([categoryId, sortOrder])
+}
+
+/// User-defined “type” within a subcategory (Fuel, Service, Political party, etc.) — filterable dimension on expenses.
+model ExpenseTypeDef {
+  id              String      @id @default(cuid())
+  userId          String
+  subCategoryId   String
+  name            String
+  nameKey         String
+  sortOrder       Int         @default(0)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subCategory     SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  expenses        Expense[]
+
+  @@unique([subCategoryId, nameKey])
+  @@index([userId])
+  @@index([subCategoryId, sortOrder])
+}
+
+/// Generic entity: bike, donor target, shop — drill-down target for reports.
+model SpendEntity {
+  id              String       @id @default(cuid())
+  userId          String
+  workspaceId     String?
+  categoryId      String
+  subCategoryId   String
+  name            String
+  nameKey         String
+  kind            EntityKind   @default(other)
+  /// When kind is vehicle, link to the Vehicle profile (optional).
+  vehicleId       String?      @unique
+  metadata        Json?
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  category        Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subCategory     SubCategory  @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
+
+  @@unique([subCategoryId, nameKey])
+  @@index([userId, categoryId])
+  @@index([workspaceId])
 }
 
 model Workspace {
@@ -340,6 +407,7 @@ model Workspace {
   invites     WorkspaceInvite[]
   accounts    Account[]
   expenses    Expense[]
+  spendEntities SpendEntity[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
@@ -466,6 +534,10 @@ model Expense {
   amount             Decimal                 @db.Decimal(12, 2)
   categoryId         String
   subCategoryId      String?
+  /// Optional analytical “type” within subcategory (Fuel, Tyres, BJP, …).
+  expenseTypeId      String?
+  /// Optional real-world entity (bike, vendor, donation target).
+  spendEntityId      String?
   accountId          String?
   date               DateTime
   note               String?
@@ -478,8 +550,11 @@ model Expense {
   vehicleId          String?
   recurringExpenseId String?
   whatsappMessageId  String?                 @unique
+  paymentMode        PaymentMode?
   category           Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   subCategory        SubCategory?            @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  expenseType        ExpenseTypeDef?         @relation(fields: [expenseTypeId], references: [id], onDelete: SetNull)
+  spendEntity        SpendEntity?            @relation(fields: [spendEntityId], references: [id], onDelete: SetNull)
   account            Account?                @relation(fields: [accountId], references: [id], onDelete: SetNull)
   user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace          Workspace?              @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
@@ -487,6 +562,7 @@ model Expense {
   vehicle            Vehicle?                @relation("ExpenseVehicle", fields: [vehicleId], references: [id], onDelete: SetNull)
   recurringExpense   RecurringExpense?       @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
   whatsappMessage    WhatsAppInboundMessage? @relation(fields: [whatsappMessageId], references: [id], onDelete: SetNull)
+  documents          Document[]
   taxable            Boolean                 @default(false)
   taxScheme          ExpenseTaxScheme?
   /// GST or VAT portion included in `amount` (same currency).
@@ -496,12 +572,16 @@ model Expense {
 
   @@index([userId, date(sort: Desc)])
   @@index([userId, categoryId, date])
+  @@index([userId, subCategoryId, date])
+  @@index([userId, expenseTypeId, date])
+  @@index([userId, spendEntityId, date])
   @@index([userId, source])
   @@index([userId, accountId])
   @@index([categoryId, date])
   @@index([workspaceId, date(sort: Desc)])
   @@index([enteredByUserId])
   @@index([userId, workspaceId, taxable, date(sort: Desc)])
+  @@index([paymentMode])
 }
 
 model RecurringExpense {
@@ -560,6 +640,7 @@ model Vehicle {
   user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses              VehicleExpense[]
   ledgerExpenses        Expense[]        @relation("ExpenseVehicle")
+  spendEntity           SpendEntity?
 
   @@unique([userId, number])
 }
@@ -587,10 +668,13 @@ model Document {
   /// Lowercase denormalized string for search (name, type, tags)
   searchBlob   String      @default("")
   uploadedAt   DateTime    @default(now())
+  expenseId    String?
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expense      Expense?    @relation(fields: [expenseId], references: [id], onDelete: SetNull)
   insurances   Insurance[]
 
   @@index([userId, uploadedAt(sort: Desc)])
+  @@index([expenseId])
 }
 
 model Notification {

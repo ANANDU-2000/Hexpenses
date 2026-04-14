@@ -51,7 +51,13 @@ export class DocumentsController {
     if (!file) {
       throw new BadRequestException('file is required');
     }
-    return this.documents.createFromUpload(req.user.userId, file, body.type, body.tags);
+    return this.documents.createFromUpload(
+      req.user.userId,
+      file,
+      body.type,
+      body.tags,
+      body.expenseId,
+    );
   }
 
   @Get()

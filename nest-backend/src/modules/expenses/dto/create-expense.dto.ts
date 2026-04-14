@@ -1,4 +1,4 @@
-import { ExpenseTaxScheme } from '@prisma/client';
+import { ExpenseTaxScheme, PaymentMode } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -31,6 +31,18 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsString()
   vehicleId?: string;
+
+  @IsOptional()
+  @IsString()
+  expenseTypeId?: string;
+
+  @IsOptional()
+  @IsString()
+  spendEntityId?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMode)
+  paymentMode?: PaymentMode;
 
   @IsOptional()
   @IsString()
