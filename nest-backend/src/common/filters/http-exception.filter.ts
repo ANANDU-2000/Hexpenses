@@ -6,7 +6,79 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+
+/** Maps Prisma errors to HTTP responses so clients do not only see "Internal server error". */
+function mapPrismaToHttp(exception: unknown): {
+  status: number;
+  body: ApiErrorBody;
+} | null {
+  if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    const code = exception.code;
+    const dev = process.env.NODE_ENV !== 'production';
+
+    if (code === 'P2002') {
+      const target = (exception.meta?.target as string[] | undefined) ?? [];
+      const msg =
+        target.includes('email') || target.includes('phone')
+          ? 'An account with this email or phone already exists.'
+          : 'A record with this value already exists.';
+      return {
+        status: HttpStatus.CONFLICT,
+        body: {
+          success: false,
+          message: msg,
+          ...(dev ? { error: { prisma: code, target } } : {}),
+        },
+      };
+    }
+
+    if (code === 'P2021') {
+      return {
+        status: HttpStatus.SERVICE_UNAVAILABLE,
+        body: {
+          success: false,
+          message: 'Database schema is missing. Redeploy the API or run migrations.',
+          ...(dev ? { error: { prisma: code, meta: exception.meta } } : {}),
+        },
+      };
+    }
+
+    return {
+      status: HttpStatus.BAD_REQUEST,
+      body: {
+        success: false,
+        message: 'Request could not be completed.',
+        ...(dev
+          ? { error: { prisma: code, meta: exception.meta, message: exception.message } }
+          : {}),
+      },
+    };
+  }
+
+  if (exception instanceof Prisma.PrismaClientInitializationError) {
+    return {
+      status: HttpStatus.SERVICE_UNAVAILABLE,
+      body: {
+        success: false,
+        message: 'Database is unavailable. Check DATABASE_URL and server status.',
+        ...(process.env.NODE_ENV !== 'production' && exception instanceof Error
+          ? { error: { name: exception.name, message: exception.message } }
+          : {}),
+      },
+    };
+  }
+
+  if (exception instanceof Prisma.PrismaClientRustPanicError) {
+    return {
+      status: HttpStatus.SERVICE_UNAVAILABLE,
+      body: { success: false, message: 'Database engine error. Try again later.' },
+    };
+  }
+
+  return null;
+}
 
 export type ApiErrorBody = {
   success: false;
@@ -71,14 +143,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-
+    const prismaMapped = mapPrismaToHttp(exception);
+    let status: number;
     let body: ApiErrorBody;
 
-    if (exception instanceof HttpException) {
+    if (prismaMapped) {
+      status = prismaMapped.status;
+      body = prismaMapped.body;
+    } else if (exception instanceof HttpException) {
+      status = exception.getStatus();
       body = normalizeHttpExceptionResponse(status, exception.getResponse());
     } else {
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
       const isProd = process.env.NODE_ENV === 'production';
       const errMsg = exception instanceof Error ? exception.message : 'Internal server error';
       body = {
@@ -100,6 +176,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `${req.method} ${req.url} ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+    } else if (prismaMapped && exception instanceof Prisma.PrismaClientKnownRequestError) {
+      this.logger.warn(`${req.method} ${req.url} ${status} prisma ${exception.code}: ${exception.message}`);
     }
 
     res.status(status).json(body);
