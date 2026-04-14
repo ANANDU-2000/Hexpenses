@@ -2,13 +2,13 @@
 DO $$ BEGIN
   CREATE TYPE "EntityKind" AS ENUM ('vehicle', 'person', 'vendor', 'donation_recipient', 'other');
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   CREATE TYPE "PaymentMode" AS ENUM ('cash', 'card', 'upi', 'bank_transfer', 'wallet', 'other');
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 -- SubCategory.sortOrder (safe if column already exists from manual/db push)
@@ -69,43 +69,43 @@ CREATE INDEX IF NOT EXISTS "SpendEntity_workspaceId_idx" ON "SpendEntity"("works
 DO $$ BEGIN
   ALTER TABLE "ExpenseTypeDef" ADD CONSTRAINT "ExpenseTypeDef_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "ExpenseTypeDef" ADD CONSTRAINT "ExpenseTypeDef_subCategoryId_fkey" FOREIGN KEY ("subCategoryId") REFERENCES "SubCategory"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "SpendEntity" ADD CONSTRAINT "SpendEntity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "SpendEntity" ADD CONSTRAINT "SpendEntity_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "SpendEntity" ADD CONSTRAINT "SpendEntity_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "SpendEntity" ADD CONSTRAINT "SpendEntity_subCategoryId_fkey" FOREIGN KEY ("subCategoryId") REFERENCES "SubCategory"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "SpendEntity" ADD CONSTRAINT "SpendEntity_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 -- Expense columns (idempotent)
@@ -116,13 +116,13 @@ ALTER TABLE "Expense" ADD COLUMN IF NOT EXISTS "paymentMode" "PaymentMode";
 DO $$ BEGIN
   ALTER TABLE "Expense" ADD CONSTRAINT "Expense_expenseTypeId_fkey" FOREIGN KEY ("expenseTypeId") REFERENCES "ExpenseTypeDef"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "Expense" ADD CONSTRAINT "Expense_spendEntityId_fkey" FOREIGN KEY ("spendEntityId") REFERENCES "SpendEntity"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 CREATE INDEX IF NOT EXISTS "Expense_userId_subCategoryId_date_idx" ON "Expense"("userId", "subCategoryId", "date");
@@ -138,7 +138,7 @@ ALTER TABLE "Document" ADD COLUMN IF NOT EXISTS "expenseId" TEXT;
 DO $$ BEGIN
   ALTER TABLE "Document" ADD CONSTRAINT "Document_expenseId_fkey" FOREIGN KEY ("expenseId") REFERENCES "Expense"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
-  WHEN duplicate_object THEN NULL;
+  WHEN duplicate_object THEN PERFORM 1 WHERE FALSE;
 END $$;
 
 CREATE INDEX IF NOT EXISTS "Document_expenseId_idx" ON "Document"("expenseId");
