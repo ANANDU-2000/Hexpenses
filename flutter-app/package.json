@@ -2,12 +2,17 @@
   "name": "hexpenses-flutter-web",
   "private": true,
   "version": "1.0.0",
-  "description": "Flutter web PWA — not Next.js. Vercel uses framework:null and npm run build.",
+  "description": "Flutter web PWA. Next/React are devDependencies only so Vercel's Next detector succeeds; build is Flutter via npm run build.",
   "scripts": {
     "build": "bash tool/vercel-build.sh",
     "vercel-build": "bash tool/vercel-build.sh"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "next": "14.2.18",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }
