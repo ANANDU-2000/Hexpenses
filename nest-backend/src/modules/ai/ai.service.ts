@@ -825,10 +825,17 @@ export class AiService {
       const src: 'gemini' | 'openai' = this.getGeminiKey() ? 'gemini' : 'openai';
       return { reply: text.trim(), source: src };
     } catch (e) {
-      this.logger.warn(`OpenAI chat failed: ${(e as Error).message}`);
-      throw new ServiceUnavailableException(
-        'AI assistant is temporarily unavailable. Try again in a moment.',
-      );
+      this.logger.warn(`AI chat failed; using heuristic fallback: ${(e as Error).message}`);
+      const fallback = await this.insightsLive(userId);
+      const first =
+        fallback.savingSuggestions[0] ??
+        fallback.budgetRecommendations[0] ??
+        fallback.insights[0] ??
+        'Track one full week of spending and compare top categories to last month.';
+      return {
+        reply: `Live AI is temporarily unavailable. Quick guidance from your latest data: ${first}`,
+        source: 'heuristic' as const,
+      };
     }
   }
 }
