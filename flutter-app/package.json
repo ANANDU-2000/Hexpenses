@@ -2,5 +2,12 @@
   "name": "hexpenses-flutter-web",
   "private": true,
   "version": "1.0.0",
-  "description": "Flutter web PWA — not Next.js. Build runs via tool/vercel-build.sh on Vercel."
+  "description": "Flutter web PWA — not Next.js. Vercel uses framework:null and npm run build.",
+  "scripts": {
+    "build": "bash tool/vercel-build.sh",
+    "vercel-build": "bash tool/vercel-build.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
